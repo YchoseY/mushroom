@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>皮克敏蘑菇戰情板 (極速輸入版)</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            padding: 15px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .btn-add {
+            background-color: #ffe66d;
+            color: #333;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .btn-add:hover { background-color: #fcdc4d; }
+
+        .card {
+            background: #ffffff;
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+            margin-bottom: 10px;
+            border-left: 6px solid #ccc; 
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+        .card.active { border-left-color: #ff6b6b; }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        input[type="text"] {
+            padding: 8px; border: 1px solid #ddd; border-radius: 6px;
+            width: 160px; font-size: 1rem; transition: 0.3s;
+        }
+        input[type="number"] {
+            padding: 8px; border: 1px solid #ddd; border-radius: 6px;
+            width: 60px; font-size: 1rem; text-align: center; transition: 0.3s;
+        }
+        input:focus {
+            border-color: #4ecdc4;
+            outline: none;
+            box-shadow: 0 0 5px rgba(78, 205, 196, 0.4);
+        }
+
+        .btn-action {
+            padding: 8px 12px; border: none; border-radius: 6px;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer;
+        }
+        .btn-calc { background-color: #4ecdc4; color: white; }
+        .btn-calc:hover { background-color: #45b7af; }
+        .btn-delete { background-color: #ff5252; color: white; }
+        .btn-delete:hover { background-color: #e04a4a; }
+        
+        .result-box {
+            flex-grow: 1; text-align: right; font-size: 0.95rem; min-width: 200px;
+        }
+        .countdown { font-size: 1.1rem; font-weight: bold; color: #e74c3c; }
+        .target-time { font-size: 0.85rem; color: #7f8c8d; }
+
+        @media (max-width: 600px) {
+            .card { flex-direction: column; align-items: flex-start; }
+            .input-group { width: 100%; }
+            input[type="text"] { flex-grow: 1; }
+            .result-box { text-align: left; width: 100%; margin-top: 5px; }
+            .btn-action { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🍄 蘑菇戰情板</h2>
+    <button class="btn-add" onclick="addMushroom()">➕ 手動新增蘑菇紀錄</button>
+    
+    <div id="tracker-container"></div>
+
+    <script>
+        let timers = {};
+
+        // 網頁載入時讀取存檔
+        window.onload = function() { loadState(); };
+
+        function addMushroom(data = null) {
+            const container = document.getElementById('tracker-container');
+            const id = data ? data.id : Date.now(); 
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${id}`;
+            card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
+            
+            card.innerHTML = `
+                <div class="input-group">
+                    <input type="text" id="name-${id}" placeholder="蘑菇名稱/地點" value="${data ? data.name : ''}">
+                </div>
+                <div class="input-group">
+                    剩餘 <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">
+                    <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
+                </div>
+                <button class="btn-action btn-calc" id="btn-${id}" onclick="startTracking(${id})">確認</button>
+                <div class="result-box" id="res-${id}">
+                    <span style="color: #aaa;">尚未設定</span>
+                </div>
+                <button class="btn-action btn-delete" onclick="removeMushroom(${id})">✖</button>
+            `;
+            
+            container.appendChild(card);
+            
+            attachEvents(id);
+
+            if (data && data.targetTime && data.targetTime !== "Infinity") {
+                resumeTracking(id, parseInt(data.targetTime));
+            } else if (!data) {
+                saveState();
+            }
+
+            return id; // 回傳建立的ID以供後續對焦使用
+        }
+
+        // --- 鍵盤行為與自動存檔事件 ---
+        function attachEvents(id) {
+            const nameInput = document.getElementById(`name-${id}`);
+            const minInput = document.getElementById(`m-${id}`);
+            const secInput = document.getElementById(`s-${id}`);
+            const btnCalc = document.getElementById(`btn-${id}`);
+
+            // Enter 鍵跳轉邏輯
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }
+            });
+            minInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }
+            });
+            secInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); btnCalc.click(); }
+            });
+
+            // 輸入框有變動時自動存檔
+            nameInput.addEventListener('change', saveState);
+            minInput.addEventListener('change', saveState);
+            secInput.addEventListener('change', saveState);
+        }
+
+        // --- 自動偵測並建立/跳轉空欄位 ---
+        function ensureEmptyRow(shouldFocus = false) {
+            const cards = document.querySelectorAll('.card');
+            let emptyCardId = null;
+
+            // 尋找是否已經有還沒開始計時的空欄位 (Infinity)
+            for (let card of cards) {
+                if (card.dataset.respawnTime === "Infinity") {
+                    emptyCardId = card.id.replace('card-', '');
+                    break;
+                }
+            }
+
+            // 如果沒有空欄位，就自動建一個新的
+            if (!emptyCardId) {
+                emptyCardId = addMushroom();
+            }
+
+            // 執行游標跳轉
+            if (shouldFocus && emptyCardId) {
+                setTimeout(() => {
+                    const nameInput = document.getElementById(`name-${emptyCardId}`);
+                    if (nameInput) {
+                        nameInput.focus();
+                        // 畫面平滑捲動到新的輸入框，讓手機使用者體驗更好
+                        nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100); // 稍微延遲讓 DOM 排序完成
+            }
+        }
+
+        // --- 計算與倒數邏輯 ---
+        function startTracking(id) {
+            const min = parseInt(document.getElementById(`m-${id}`).value) || 0;
+            const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
+            
+            if (min === 0 && sec === 0) {
+                alert("請輸入剩餘的分鐘或秒數！");
+                return;
+            }
+
+            const now = Date.now();
+            const totalSecondsToAdd = (min * 60) + sec + 300; // 輸入時間 + 5 mins 蘑菇重生時間
+            const targetTime = now + (totalSecondsToAdd * 1000);
+
+            resumeTracking(id, targetTime);
+            sortMushrooms();
+            saveState(); 
+
+            // ★ 核心功能：計算完成後，自動補上空列並跳轉游標！
+            ensureEmptyRow(true);
+        }
+
+        function resumeTracking(id, targetTime) {
+            const card = document.getElementById(`card-${id}`);
+            card.dataset.respawnTime = targetTime;
+            card.classList.add('active');
+
+            if (timers[id]) clearInterval(timers[id]);
+
+            const respawnDate = new Date(targetTime);
+            const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+
+            updateCountdown(id, targetTime, timeString);
+            timers[id] = setInterval(() => {
+                updateCountdown(id, targetTime, timeString);
+            }, 1000);
+        }
+
+        function updateCountdown(id, targetTime, timeString) {
+            const resDiv = document.getElementById(`res-${id}`);
+            if (!resDiv) return;
+
+            const now = Date.now();
+            const diff = targetTime - now;
+
+            if (diff <= 0) {
+                resDiv.innerHTML = `<span class="countdown">🍄 已重生！</span>`;
+                clearInterval(timers[id]);
+                return;
+            }
+
+            const remainingMins = Math.floor(diff / 60000);
+            const remainingSecs = Math.floor((diff % 60000) / 1000);
+
+            resDiv.innerHTML = `
+                <div class="countdown">剩餘: ${remainingMins}分 ${remainingSecs}秒</div>
+                <div class="target-time">預計重生於 ${timeString}</div>
+            `;
+        }
+
+        // --- 排序功能 ---
+        function sortMushrooms() {
+            const container = document.getElementById('tracker-container');
+            const cards = Array.from(container.getElementsByClassName('card'));
+
+            cards.sort((a, b) => {
+                return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime);
+            });
+
+            cards.forEach(card => container.appendChild(card));
+        }
+
+        function removeMushroom(id) {
+            if (timers[id]) clearInterval(timers[id]);
+            const card = document.getElementById(`card-${id}`);
+            if (card) card.remove();
+            saveState(); 
+        }
+
+        // --- 存檔與讀檔系統 ---
+        function saveState() {
+            const cards = document.querySelectorAll('.card');
+            const data = [];
+            cards.forEach(card => {
+                const id = card.id.replace('card-', '');
+                data.push({
+                    id: id,
+                    name: document.getElementById(`name-${id}`).value,
+                    min: document.getElementById(`m-${id}`).value,
+                    sec: document.getElementById(`s-${id}`).value,
+                    targetTime: card.dataset.respawnTime
+                });
+            });
+            localStorage.setItem('pikminMushrooms_v2', JSON.stringify(data));
+        }
+
+        function loadState() {
+            const stored = localStorage.getItem('pikminMushrooms_v2');
+            if (stored) {
+                const data = JSON.parse(stored);
+                if (data.length > 0) {
+                    data.forEach(item => addMushroom(item));
+                    sortMushrooms(); 
+                    
+                    // 讀取完畢後，確保最下面有一個空列可以輸入 (但此時不自動跳轉，以免妨礙使用者一進網頁的體驗)
+                    ensureEmptyRow(false); 
+                    return;
+                }
+            }
+            addMushroom(); 
+        }
+    </script>
+
+</body>
+</html>
