@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>皮克敏蘑菇戰情板 (連線分享版)</title>
+    <title>皮克敏蘑菇戰情板 (智慧合併版)</title>
     <style>
         body {
             font-family: "Microsoft JhengHei", sans-serif;
@@ -76,32 +76,46 @@
     <script>
         let timers = {};
 
-        // 網頁載入時優先檢查網址是否有朋友傳來的分享碼
         window.onload = function() { checkSharedData(); };
 
+        // --- 核心修改：智慧合併邏輯 ---
         function checkSharedData() {
             const urlParams = new URLSearchParams(window.location.search);
             const shareData = urlParams.get('share');
             
             if (shareData) {
                 try {
-                    // 解碼 URL 中的資料
-                    const decodedData = decodeURIComponent(atob(shareData));
-                    // 覆蓋本地存檔
-                    localStorage.setItem('pikminMushrooms_v2', decodedData);
-                    // 清除網址列上的分享碼，保持網址乾淨
+                    // 1. 解碼朋友傳來的資料
+                    const decodedString = decodeURIComponent(atob(shareData));
+                    const sharedArray = JSON.parse(decodedString);
+                    
+                    // 2. 讀取自己手機原本的資料
+                    const localString = localStorage.getItem('pikminMushrooms_v2');
+                    const localArray = localString ? JSON.parse(localString) : [];
+
+                    // 3. 進行合併 (使用 Map 確保 ID 不重複)
+                    const mergedMap = new Map();
+                    // 先把自己的資料放進去
+                    localArray.forEach(item => mergedMap.set(item.id, item));
+                    // 再把朋友的資料放進去 (如果有相同ID的會以朋友的為準覆蓋，不同ID的會直接新增)
+                    sharedArray.forEach(item => mergedMap.set(item.id, item));
+                    
+                    const finalArray = Array.from(mergedMap.values());
+
+                    // 4. 存回本地資料庫
+                    localStorage.setItem('pikminMushrooms_v2', JSON.stringify(finalArray));
+                    
+                    // 5. 清理網址，保持乾淨
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    alert("✅ 已成功載入朋友分享的蘑菇戰情！");
+                    alert("✅ 已成功將朋友的紀錄「合併」到你的戰情板中！\n原有的紀錄皆已保留。");
                 } catch(e) {
                     alert("❌ 分享連結解析失敗，可能是連結不完整。");
                 }
             }
-            // 讀取本地存檔（包含剛剛覆蓋進去的朋友資料）
             loadState(); 
         }
 
         function shareToFriend() {
-            // 確保存檔是最新的
             saveState();
             const data = localStorage.getItem('pikminMushrooms_v2');
             
@@ -110,20 +124,17 @@
                 return;
             }
 
-            // 將中文與資料壓縮編碼，變成一段安全的文字
             const encodedData = btoa(encodeURIComponent(data));
-            // 組合出專屬網址
             const shareUrl = window.location.origin + window.location.pathname + '?share=' + encodedData;
 
-            // 複製到剪貼簿
             navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('🔗 分享連結已複製！\n直接貼到 LINE 傳給朋友，他們點開就會看到跟你一樣的倒數計時！');
+                alert('🔗 分享連結已複製！\n直接貼到 LINE 傳給朋友，他們的戰情板會自動加上你的紀錄！');
             }).catch(() => {
-                // 如果瀏覽器不支援自動複製，跳出視窗讓使用者手動複製
                 prompt("請複製以下連結傳給朋友：", shareUrl);
             });
         }
 
+        // 下方的程式碼維持不變 (新增、倒數、存檔等功能)
         function addMushroom(data = null) {
             const container = document.getElementById('tracker-container');
             const id = data ? data.id : Date.now(); 
