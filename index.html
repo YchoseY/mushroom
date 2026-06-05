@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>皮克敏蘑菇戰情板 (響應式雙模版)</title>
+    <title>皮克敏蘑菇戰情板 (手機優化大字版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -33,7 +33,7 @@
         #qrcode { display: flex; justify-content: center; margin: 15px 0; }
 
         /* =======================================================
-           💻 預設樣式：電腦 PC 版 (畫面舒適大氣、大按鈕)
+           💻 預設樣式：電腦 PC 版 (完全維持不動)
            ======================================================= */
         .header-buttons {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
@@ -49,7 +49,7 @@
         .btn-code { background-color: #0984e3; color: white; }
         .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 10px; font-size: 0.95rem; }
 
-        /* 電腦版卡片：寬鬆有立體感 */
+        /* 電腦版卡片：一橫排 */
         .card {
             background: #ffffff; padding: 15px 20px; border-radius: 10px;
             box-shadow: 0 3px 6px rgba(0,0,0,0.05); margin-bottom: 12px;
@@ -65,14 +65,12 @@
         input[type="number"] { padding: 8px 4px; border: 1px solid #ddd; border-radius: 6px; width: 50px; font-size: 1rem; text-align: center; outline: none; }
         input:focus { border-color: #4ecdc4; }
 
-        /* 電腦版大確認鈕 */
         .btn-calc { 
             background-color: #4ecdc4; color: white; border: none; 
             padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; 
             font-weight: bold; cursor: pointer; flex-shrink: 0;
         }
 
-        /* 電腦版倒數區 */
         .result-box {
             flex-grow: 1; display: flex; flex-direction: column; 
             justify-content: center; align-items: flex-end; 
@@ -81,7 +79,6 @@
         .countdown { font-size: 1.2rem; font-weight: bold; color: #e74c3c; white-space: nowrap; }
         .target-time { font-size: 0.85rem; color: #95a5a6; white-space: nowrap; }
 
-        /* 電腦版大刪除鈕 */
         .btn-delete { 
             background-color: #ff7675; color: white; border: none;
             padding: 8px 14px; border-radius: 6px; font-size: 0.95rem;
@@ -91,46 +88,72 @@
 
 
         /* =======================================================
-           📱 智慧響應：當螢幕寬度小於 768px 時，切換為手機極簡版
+           📱 智慧響應：針對手機版（螢幕寬度小於 768px）進行大字優化
            ======================================================= */
         @media (max-width: 768px) {
-            body { padding: 8px; }
-            h2 { font-size: 1.3rem; margin: 8px 0; }
+            body { padding: 10px; }
+            h2 { font-size: 1.5rem; margin: 10px 0; }
             
-            /* 縮小管理按鈕 */
-            .header-buttons { gap: 4px; margin-bottom: 10px; }
-            .btn-main { padding: 6px 2px; font-size: 0.72rem; border-radius: 5px; }
-            .btn-import { padding: 6px; font-size: 0.78rem; }
+            /* 上方按鈕維持 四個一排、一個一排，但「按鈕加大、字體變大」 */
+            .header-buttons { gap: 6px; margin-bottom: 12px; }
+            .btn-main { padding: 10px 4px; font-size: 0.9rem; border-radius: 6px; }
+            .btn-import { padding: 12px; font-size: 0.95rem; }
 
-            /* 壓扁卡片橫條 */
-            .card { padding: 5px 8px; margin-bottom: 5px; border-left-width: 4px; gap: 4px; border-radius: 6px; }
-            .input-item-wrap { gap: 3px; }
+            /* 下方蘑菇卡片改為「垂直兩行排版」，以便釋放橫向空間放大字體 */
+            .card { 
+                padding: 10px 12px; 
+                margin-bottom: 8px; 
+                border-left-width: 5px; 
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column; /* 轉為垂直堆疊 */
+                align-items: stretch;
+                gap: 8px;
+            }
             
-            /* 縮小輸入框體積 */
-            input[type="text"] { padding: 5px; width: 90px; font-size: 0.82rem; border-radius: 4px; }
-            input[type="number"] { padding: 5px 1px; width: 30px; font-size: 0.82rem; border-radius: 4px; }
+            /* 第一行：輸入區域（滿版，並拉大輸入框與打勾鈕） */
+            .input-item-wrap { 
+                display: flex;
+                align-items: center;
+                width: 100%;
+                gap: 6px; 
+                font-size: 1rem; /* 分秒之間的冒號放大 */
+            }
+            input[type="text"] { padding: 8px; width: 45%; font-size: 1rem; border-radius: 5px; flex-grow: 1; }
+            input[type="number"] { padding: 8px 2px; width: 42px; font-size: 1rem; border-radius: 5px; }
+            .btn-calc { padding: 8px 12px; font-size: 1rem; border-radius: 5px; }
             
-            /* 確認鈕變成純打勾符號 */
-            .btn-calc { padding: 5px 6px; font-size: 0.78rem; border-radius: 4px; }
-            
-            /* 縮減時間文字區間 */
-            .result-box { min-width: 85px; margin-right: 0; line-height: 1.1; }
-            .countdown { font-size: 0.85rem; }
-            .target-time { font-size: 0.68rem; }
+            /* 第二行：倒數時間與刪除區域 */
+            .mobile-row-two {
+                display: flex !important;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                border-top: 1px dashed #eee; /* 用淡淡的虛線與上一行隔開，更美觀 */
+                padding-top: 6px;
+                margin-top: 2px;
+            }
 
-            /* 刪除鈕在手機上變成極簡的文字叉叉 ✕ */
+            /* 第二行的時間資訊（置左，方便閱讀，字體大幅放大） */
+            .result-box { 
+                display: flex;
+                flex-direction: row; /* 在手機上讓剩餘時間與重生時間橫排或緊湊並列 */
+                align-items: center;
+                gap: 10px;
+                min-width: unset; 
+                margin-right: 0; 
+                line-height: 1.2;
+                flex-grow: 1;
+            }
+            .countdown { font-size: 1.1rem; } /* 倒數時間變超大 */
+            .target-time { font-size: 0.85rem; color: #7f8c8d; } /* 重生時間變大 */
+
+            /* 右側的刪除按鈕 */
             .btn-delete { 
-                background: none; color: #b2bec3; padding: 4px; 
-                font-size: 1.1rem; border-radius: 0;
+                background: none; color: #b2bec3; padding: 4px 8px; 
+                font-size: 1.3rem; border-radius: 0;
             }
             .btn-delete:hover { color: #ff7675; background: none; }
-        }
-
-        /* 針對更小螢幕的極限縮微 (如 iPhone SE) */
-        @media (max-width: 350px) {
-            input[type="text"] { width: 75px; font-size: 0.8rem; }
-            input[type="number"] { width: 26px; font-size: 0.8rem; }
-            .countdown { font-size: 0.78rem; }
         }
     </style>
 </head>
@@ -140,7 +163,7 @@
     
     <div class="header-buttons">
         <button class="btn-main btn-add" onclick="ensureEmptyRow(true)">➕ 新增</button>
-        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址分享</button>
+        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址</button>
         <button class="btn-main btn-qr" onclick="showShareQR()">📱 QR碼</button>
         <button class="btn-main btn-code" onclick="copyShareCode()">📋 文字碼</button>
         <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
@@ -168,7 +191,6 @@
     <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
     <script>
-        // 固定抽屜鑰匙名稱，確保改版永不掉檔
         const DB_KEY = 'pikmin_mushroom_final_database';
         
         let timers = {};
@@ -315,7 +337,7 @@
             card.className = 'card'; card.id = `card-${id}`;
             card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
             
-            // 透過動態判斷，在 JS 初始化與 CSS 搭配，完美實現 PC/手機按鈕與元件的變型
+            // 手機版利用 .mobile-row-two 完美切成兩行排版，同時完美相容電腦版的一行版面
             card.innerHTML = `
                 <div class="input-item-wrap">
                     <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
@@ -323,14 +345,16 @@
                     <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
                     <button class="btn-calc" id="btn-${id}" onclick="startTracking(${id})">✓</button>
                 </div>
-                <div class="result-box" id="res-${id}">
-                    <span style="color: #bbb; font-size:0.85rem;">未設定</span>
+                <div class="mobile-row-two">
+                    <div class="result-box" id="res-${id}">
+                        <span style="color: #bbb; font-size:0.85rem;">未設定</span>
+                    </div>
+                    <button class="btn-delete" id="del-${id}" onclick="removeMushroom(${id})">✕</button>
                 </div>
-                <button class="btn-delete" id="del-${id}" onclick="removeMushroom(${id})">✕</button>
             `;
             container.appendChild(card);
             attachEvents(id);
-            updateButtonText(id); // 依初始寬度更新按鈕文字
+            updateButtonText(id); 
 
             if (data && data.targetTime && data.targetTime !== "Infinity") {
                 resumeTracking(id, parseInt(data.targetTime));
@@ -340,7 +364,6 @@
             return id; 
         }
 
-        // 當電腦版寬度時，把純符號按鈕優化成有文字的版本
         function updateButtonText(id) {
             const btnCalc = document.getElementById(`btn-${id}`);
             const btnDel = document.getElementById(`del-${id}`);
@@ -354,7 +377,7 @@
                 btnDel.innerText = "✕";
             }
         }
-        // 監聽視窗縮放，確保拉動視窗時動態切換按鈕文字
+
         window.addEventListener('resize', () => {
             const cards = document.querySelectorAll('.card');
             cards.forEach(card => {
@@ -444,11 +467,11 @@
             const rM = Math.floor(diff / 60000);
             const rS = Math.floor((diff % 60000) / 1000);
             
-            // 根據寬度彈性排版文字
             if(window.innerWidth > 768) {
                 resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
             } else {
-                resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">${timeString} 重生</div>`;
+                // 手機版：放大的兩段式文字並列
+                resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">(${timeString} 重生)</div>`;
             }
         }
 
