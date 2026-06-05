@@ -2,34 +2,51 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>皮克敏蘑菇戰情板 (智慧合併版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>皮克敏蘑菇戰情板 (旗艦通知版)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="蘑菇戰情板">
+    
     <style>
         body {
             font-family: "Microsoft JhengHei", sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            padding: 15px;
-            max-width: 800px;
-            margin: 0 auto;
+            background-color: #f4f7f6; color: #333; padding: 15px;
+            max-width: 800px; margin: 0 auto;
         }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
         
+        /* 按鈕區域排版 */
         .header-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px;
         }
         .btn-main {
-            border: none; padding: 12px 15px; border-radius: 8px;
-            font-size: 1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%; transition: 0.2s;
+            border: none; padding: 10px; border-radius: 8px;
+            font-size: 0.95rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
         }
         .btn-add { background-color: #ffe66d; color: #333; }
-        .btn-add:hover { background-color: #fcdc4d; }
-        .btn-share { background-color: #0984e3; color: white; }
-        .btn-share:hover { background-color: #076ccc; }
+        .btn-qr { background-color: #6c5ce7; color: white; }
+        .btn-code { background-color: #0984e3; color: white; }
+        .btn-url { background-color: #fd9644; color: white; } /* 網頁網址分享按鈕 */
+        .btn-import { background-color: #00b894; color: white; grid-column: span 2; } /* 佔滿整行 */
 
+        /* 彈出視窗樣式 */
+        .modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 300; width: 85%; max-width: 400px; text-align: center;
+        }
+        .modal-backdrop {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 290;
+        }
+        #qrcode { display: flex; justify-content: center; margin: 15px 0; }
+
+        /* 卡片排版 */
         .card {
             background: #ffffff; padding: 12px 15px; border-radius: 10px;
             box-shadow: 0 3px 6px rgba(0,0,0,0.05); margin-bottom: 10px;
@@ -37,19 +54,13 @@
             align-items: center; gap: 10px; transition: all 0.3s ease;
         }
         .card.active { border-left-color: #ff6b6b; }
-
         .input-group { display: flex; align-items: center; gap: 5px; }
-        input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 160px; font-size: 1rem; transition: 0.3s; }
-        input[type="number"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 60px; font-size: 1rem; text-align: center; transition: 0.3s; }
-        input:focus { border-color: #4ecdc4; outline: none; box-shadow: 0 0 5px rgba(78, 205, 196, 0.4); }
-
+        input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 140px; font-size: 1rem; }
+        input[type="number"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 55px; font-size: 1rem; text-align: center; }
         .btn-action { padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
         .btn-calc { background-color: #4ecdc4; color: white; }
-        .btn-calc:hover { background-color: #45b7af; }
         .btn-delete { background-color: #ff5252; color: white; }
-        .btn-delete:hover { background-color: #e04a4a; }
-        
-        .result-box { flex-grow: 1; text-align: right; font-size: 0.95rem; min-width: 200px; }
+        .result-box { flex-grow: 1; text-align: right; font-size: 0.95rem; min-width: 180px; }
         .countdown { font-size: 1.1rem; font-weight: bold; color: #e74c3c; }
         .target-time { font-size: 0.85rem; color: #7f8c8d; }
 
@@ -64,101 +75,210 @@
 </head>
 <body>
 
-    <h2>🍄 蘑菇戰情板</h2>
+    <h2>🍄 蘑菇戰情板 (智慧連線版)</h2>
     
     <div class="header-buttons">
         <button class="btn-main btn-add" onclick="ensureEmptyRow(true)">➕ 新增紀錄</button>
-        <button class="btn-main btn-share" onclick="shareToFriend()">🔗 複製分享連結</button>
+        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 LINE 網址分享</button>
+        <button class="btn-main btn-qr" onclick="showShareQR()">📱 當面 QR 分享</button>
+        <button class="btn-main btn-code" onclick="copyShareCode()">📋 複製文字碼</button>
+        <button class="btn-main btn-import" onclick="openImportModal()">📥 匯入資料 / 開相機掃描條碼</button>
     </div>
     
     <div id="tracker-container"></div>
 
+    <div class="modal-backdrop" id="qr-backdrop" onclick="closeQRModal()"></div>
+    <div class="modal" id="qrModal">
+        <h3>掃描此 QR Code 分享戰情</h3>
+        <div id="qrcode"></div>
+        <button class="btn-main btn-delete" onclick="closeQRModal()">關閉</button>
+    </div>
+
+    <div class="modal-backdrop" id="import-backdrop" onclick="closeImportModal()"></div>
+    <div class="modal" id="importModal">
+        <h3>📥 匯入朋友的戰情</h3>
+        <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px;">📷 打開相機掃描 QR</button>
+        <div id="reader" style="width: 100%; display: none; margin-bottom: 10px;"></div>
+        
+        <p style="font-size: 0.85rem; color: #666;">或在下方貼上朋友的文字碼：</p>
+        <input type="text" id="manualCodeInput" placeholder="在此貼上文字碼" style="width: 90%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
+        <button class="btn-main btn-import" onclick="importManualCode()">確認貼上匯入</button>
+        <button class="btn-main btn-add" onclick="closeImportModal()" style="background:#aaa; color:#fff; margin-top: 10px;">取消</button>
+    </div>
+
+    <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+
     <script>
         let timers = {};
+        let notifiedItems = {}; // 記錄哪些蘑菇已經發過通知，避免重發
+        let html5QrcodeScanner = null;
 
-        window.onload = function() { checkSharedData(); };
+        window.onload = function() { 
+            requestNotificationPermission();
+            checkSharedData(); // 優先檢查網址是否有帶分享參數
+        };
 
-        // --- 核心修改：智慧合併邏輯 ---
+        // 要求通知權限
+        function requestNotificationPermission() {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission !== "granted") {
+                        console.log("用戶拒絕了通知權限。");
+                    }
+                });
+            }
+        }
+
+        // === 分享核心：資料封裝與智慧合併 ===
+        function getPackedData() {
+            saveState();
+            const data = localStorage.getItem('pikminMushrooms_v3');
+            if (!data || data === "[]") return null;
+            return btoa(encodeURIComponent(data));
+        }
+
+        // 智慧型合併陣列
+        function mergeArrays(sharedArray) {
+            const localString = localStorage.getItem('pikminMushrooms_v3');
+            const localArray = localString ? JSON.parse(localString) : [];
+
+            const mergedMap = new Map();
+            localArray.forEach(item => mergedMap.set(item.id, item));
+            sharedArray.forEach(item => mergedMap.set(item.id, item));
+            
+            localStorage.setItem('pikminMushrooms_v3', JSON.stringify(Array.from(mergedMap.values())));
+            
+            // 重新刷新畫面
+            document.getElementById('tracker-container').innerHTML = '';
+            loadState();
+        }
+
+        // 功能 1：功能保留 - 網頁 URL 網址分享
+        function shareViaURL() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料可以分享喔！');
+            const shareUrl = window.location.origin + window.location.pathname + '?share=' + packed;
+
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('🔗 LINE 分享網址已複製！\n沒使用 PWA 的朋友直接點開網址，就能將資料合併進去！');
+            }).catch(() => {
+                prompt("請複製以下網址：", shareUrl);
+            });
+        }
+
+        // 網頁載入時檢查網址
         function checkSharedData() {
             const urlParams = new URLSearchParams(window.location.search);
             const shareData = urlParams.get('share');
             
             if (shareData) {
                 try {
-                    // 1. 解碼朋友傳來的資料
                     const decodedString = decodeURIComponent(atob(shareData));
                     const sharedArray = JSON.parse(decodedString);
+                    mergeArrays(sharedArray);
                     
-                    // 2. 讀取自己手機原本的資料
-                    const localString = localStorage.getItem('pikminMushrooms_v2');
-                    const localArray = localString ? JSON.parse(localString) : [];
-
-                    // 3. 進行合併 (使用 Map 確保 ID 不重複)
-                    const mergedMap = new Map();
-                    // 先把自己的資料放進去
-                    localArray.forEach(item => mergedMap.set(item.id, item));
-                    // 再把朋友的資料放進去 (如果有相同ID的會以朋友的為準覆蓋，不同ID的會直接新增)
-                    sharedArray.forEach(item => mergedMap.set(item.id, item));
-                    
-                    const finalArray = Array.from(mergedMap.values());
-
-                    // 4. 存回本地資料庫
-                    localStorage.setItem('pikminMushrooms_v2', JSON.stringify(finalArray));
-                    
-                    // 5. 清理網址，保持乾淨
+                    // 移除網址後綴，保持乾淨
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    alert("✅ 已成功將朋友的紀錄「合併」到你的戰情板中！\n原有的紀錄皆已保留。");
+                    alert("✅ 已成功將網址中的蘑菇紀錄「合併」進來！");
                 } catch(e) {
-                    alert("❌ 分享連結解析失敗，可能是連結不完整。");
+                    alert("❌ 網址解析失敗，資料可能不完整。");
                 }
+            } else {
+                loadState();
             }
-            loadState(); 
         }
 
-        function shareToFriend() {
-            saveState();
-            const data = localStorage.getItem('pikminMushrooms_v2');
+        // 功能 2：QR Code 顯示
+        function showShareQR() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料可以產生 QR Code 喔！');
             
-            if (!data || data === "[]") {
-                alert('目前沒有資料可以分享喔！');
-                return;
-            }
+            document.getElementById('qr-backdrop').style.display = 'block';
+            document.getElementById('qrModal').style.display = 'block';
+            
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, { text: packed, width: 200, height: 200 });
+        }
+        function closeQRModal() {
+            document.getElementById('qr-backdrop').style.display = 'none';
+            document.getElementById('qrModal').style.display = 'none';
+        }
 
-            const encodedData = btoa(encodeURIComponent(data));
-            const shareUrl = window.location.origin + window.location.pathname + '?share=' + encodedData;
-
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('🔗 分享連結已複製！\n直接貼到 LINE 傳給朋友，他們的戰情板會自動加上你的紀錄！');
+        // 功能 3：文字碼複製
+        function copyShareCode() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料可以複製喔！');
+            const prefixCode = "PKM-" + packed;
+            navigator.clipboard.writeText(prefixCode).then(() => {
+                alert('📋 PWA 專用文字碼已複製！可以傳給開 PWA 的朋友去貼上了。');
             }).catch(() => {
-                prompt("請複製以下連結傳給朋友：", shareUrl);
+                prompt("請手動複製此代碼：", prefixCode);
             });
         }
 
-        // 下方的程式碼維持不變 (新增、倒數、存檔等功能)
+        // 功能 4：匯入功能處理
+        function openImportModal() {
+            document.getElementById('import-backdrop').style.display = 'block';
+            document.getElementById('importModal').style.display = 'block';
+        }
+        function closeImportModal() {
+            if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => console.log(e)); html5QrcodeScanner = null; }
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('import-backdrop').style.display = 'none';
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        function importManualCode() {
+            let val = document.getElementById('manualCodeInput').value.trim();
+            if(!val) return alert('請先貼上代碼！');
+            if (val.startsWith("PKM-")) val = val.replace("PKM-", "");
+            
+            try {
+                const decodedString = decodeURIComponent(atob(val));
+                mergeArrays(JSON.parse(decodedString));
+                document.getElementById('manualCodeInput').value = '';
+                closeImportModal();
+                alert("✅ 成功合併文字碼資料！");
+            } catch(e) { alert("❌ 代碼解析失敗。"); }
+        }
+
+        function startCameraScan() {
+            document.getElementById('reader').style.display = 'block';
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    try {
+                        const decodedString = decodeURIComponent(atob(decodedText));
+                        mergeArrays(JSON.parse(decodedString));
+                        closeImportModal();
+                        alert("✅ 條碼掃描成功，資料已智慧合併！");
+                    } catch(e) { alert("條碼格式錯誤。"); }
+                },
+                () => {}
+            ).catch(err => { alert("無法開啟相機，請確認權限。"); document.getElementById('reader').style.display = 'none'; });
+        }
+
+        // =======================================================
+        // 輸入、倒數、自動補列、通知發送核心邏輯
+        // =======================================================
         function addMushroom(data = null) {
             const container = document.getElementById('tracker-container');
             const id = data ? data.id : Date.now(); 
             
             const card = document.createElement('div');
-            card.className = 'card';
-            card.id = `card-${id}`;
+            card.className = 'card'; card.id = `card-${id}`;
             card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
             
             card.innerHTML = `
-                <div class="input-group">
-                    <input type="text" id="name-${id}" placeholder="蘑菇名稱/地點" value="${data ? data.name : ''}">
-                </div>
-                <div class="input-group">
-                    剩餘 <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">
-                    <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
-                </div>
+                <div class="input-group"><input type="text" id="name-${id}" placeholder="蘑菇名稱/地點" value="${data ? data.name : ''}"></div>
+                <div class="input-group">剩餘 <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}"><input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}"></div>
                 <button class="btn-action btn-calc" id="btn-${id}" onclick="startTracking(${id})">確認</button>
-                <div class="result-box" id="res-${id}">
-                    <span style="color: #aaa;">尚未設定</span>
-                </div>
+                <div class="result-box" id="res-${id}"><span style="color: #aaa;">尚未設定</span></div>
                 <button class="btn-action btn-delete" onclick="removeMushroom(${id})">✖</button>
             `;
-            
             container.appendChild(card);
             attachEvents(id);
 
@@ -188,23 +308,14 @@
         function ensureEmptyRow(shouldFocus = false) {
             const cards = document.querySelectorAll('.card');
             let emptyCardId = null;
-
             for (let card of cards) {
-                if (card.dataset.respawnTime === "Infinity") {
-                    emptyCardId = card.id.replace('card-', '');
-                    break;
-                }
+                if (card.dataset.respawnTime === "Infinity") { emptyCardId = card.id.replace('card-', ''); break; }
             }
-
             if (!emptyCardId) { emptyCardId = addMushroom(); }
-
             if (shouldFocus && emptyCardId) {
                 setTimeout(() => {
                     const nameInput = document.getElementById(`name-${emptyCardId}`);
-                    if (nameInput) {
-                        nameInput.focus();
-                        nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+                    if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
                 }, 100);
             }
         }
@@ -212,12 +323,13 @@
         function startTracking(id) {
             const min = parseInt(document.getElementById(`m-${id}`).value) || 0;
             const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
-            
-            if (min === 0 && sec === 0) { alert("請輸入剩餘的分鐘或秒數！"); return; }
+            if (min === 0 && sec === 0) { alert("請輸入剩餘的時間！"); return; }
 
             const now = Date.now();
-            const totalSecondsToAdd = (min * 60) + sec + 300; 
-            const targetTime = now + (totalSecondsToAdd * 1000);
+            const targetTime = now + (((min * 60) + sec + 300) * 1000); // 剩餘時間 + 5分鐘冷卻
+
+            // 重置此 ID 的通知狀態
+            delete notifiedItems[id];
 
             resumeTracking(id, targetTime);
             sortMushrooms();
@@ -229,22 +341,28 @@
             const card = document.getElementById(`card-${id}`);
             card.dataset.respawnTime = targetTime;
             card.classList.add('active');
-
             if (timers[id]) clearInterval(timers[id]);
-
+            
             const respawnDate = new Date(targetTime);
             const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-
+            
             updateCountdown(id, targetTime, timeString);
             timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
         }
 
         function updateCountdown(id, targetTime, timeString) {
             const resDiv = document.getElementById(`res-${id}`);
+            const nameStr = document.getElementById(`name-${id}`).value || "未命名蘑菇";
             if (!resDiv) return;
-
+            
             const now = Date.now();
             const diff = targetTime - now;
+
+            // === 核心修改：提前 1 分鐘 (60秒) 發送 PWA 通知 ===
+            if (diff > 0 && diff <= 60000 && !notifiedItems[id]) {
+                notifiedItems[id] = true; // 鎖定，避免重發
+                sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生，準備派隊！`);
+            }
 
             if (diff <= 0) {
                 resDiv.innerHTML = `<span class="countdown">🍄 已重生！</span>`;
@@ -252,13 +370,21 @@
                 return;
             }
 
-            const remainingMins = Math.floor(diff / 60000);
-            const remainingSecs = Math.floor((diff % 60000) / 1000);
+            resDiv.innerHTML = `<div class="countdown">剩餘: ${Math.floor(diff / 60000)}分 ${Math.floor((diff % 60000) / 1000)}秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
+        }
 
-            resDiv.innerHTML = `
-                <div class="countdown">剩餘: ${remainingMins}分 ${remainingSecs}秒</div>
-                <div class="target-time">預計重生於 ${timeString}</div>
-            `;
+        // 觸發原生通知與音效
+        function sendWebNotification(title, bodyText) {
+            // 播放內建音效
+            try { document.getElementById('alert-sound').play(); } catch(e){}
+
+            // 跳出系統橫幅通知
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: bodyText,
+                    icon: "https://cdn-icons-png.flaticon.com/512/188/188987.png" // 裝飾通知的小圖示
+                });
+            }
         }
 
         function sortMushrooms() {
@@ -270,6 +396,7 @@
 
         function removeMushroom(id) {
             if (timers[id]) clearInterval(timers[id]);
+            delete notifiedItems[id];
             const card = document.getElementById(`card-${id}`);
             if (card) card.remove();
             saveState(); 
@@ -281,18 +408,16 @@
             cards.forEach(card => {
                 const id = card.id.replace('card-', '');
                 data.push({
-                    id: id,
-                    name: document.getElementById(`name-${id}`).value,
-                    min: document.getElementById(`m-${id}`).value,
-                    sec: document.getElementById(`s-${id}`).value,
+                    id: id, name: document.getElementById(`name-${id}`).value,
+                    min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value,
                     targetTime: card.dataset.respawnTime
                 });
             });
-            localStorage.setItem('pikminMushrooms_v2', JSON.stringify(data));
+            localStorage.setItem('pikminMushrooms_v3', JSON.stringify(data));
         }
 
         function loadState() {
-            const stored = localStorage.getItem('pikminMushrooms_v2');
+            const stored = localStorage.getItem('pikminMushrooms_v3');
             if (stored) {
                 const data = JSON.parse(stored);
                 if (data.length > 0) {
@@ -305,6 +430,5 @@
             ensureEmptyRow(false); 
         }
     </script>
-
 </body>
 </html>
