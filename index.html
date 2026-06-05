@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>皮克敏蘑菇戰情板 (極簡橫條版)</title>
+    <title>皮克敏蘑菇戰情板 (響應式雙模版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -12,30 +12,15 @@
     <meta name="apple-mobile-web-app-title" content="蘑菇戰情板">
     
     <style>
-        /* --- 全局極簡設定 --- */
+        /* --- 基礎設定 --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "微軟正黑體", sans-serif;
-            background-color: #f1f2f6; color: #2d3436; padding: 10px;
-            max-width: 1000px; margin: 0 auto;
+            background-color: #f1f2f6; color: #2d3436; padding: 15px;
+            max-width: 900px; margin: 0 auto;
         }
-        h2 { text-align: center; color: #2c3e50; margin: 10px 0; font-size: 1.4rem; }
+        h2 { text-align: center; color: #2c3e50; margin: 15px 0; font-size: 1.6rem; }
         
-        /* 管理按鈕區：微縮體積 */
-        .header-buttons {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 12px;
-        }
-        .btn-main {
-            border: none; padding: 8px 4px; border-radius: 6px;
-            font-size: 0.75rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;
-        }
-        .btn-add { background-color: #ffe66d; color: #333; }
-        .btn-url { background-color: #fd9644; color: white; }
-        .btn-qr { background-color: #6c5ce7; color: white; }
-        .btn-code { background-color: #0984e3; color: white; }
-        .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 6px; font-size: 0.8rem; }
-
-        /* 彈出視窗 */
+        /* 彈出視窗基礎樣式 */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -48,59 +33,104 @@
         #qrcode { display: flex; justify-content: center; margin: 15px 0; }
 
         /* =======================================================
-           核心：極簡橫條卡片排版 (完美支援手機不折行)
+           💻 預設樣式：電腦 PC 版 (畫面舒適大氣、大按鈕)
            ======================================================= */
-        .card {
-            background: #ffffff; padding: 6px 10px; border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 6px;
-            border-left: 4px solid #b2bec3; 
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 6px; overflow: hidden; box-sizing: border-box;
+        .header-buttons {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
         }
-        .card.active { border-left-color: #ff7675; background-color: #fff9f9; }
+        .btn-main {
+            border: none; padding: 12px 10px; border-radius: 8px;
+            font-size: 1rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
+        }
+        .btn-add { background-color: #ffe66d; color: #333; }
+        .btn-url { background-color: #fd9644; color: white; }
+        .btn-qr { background-color: #6c5ce7; color: white; }
+        .btn-code { background-color: #0984e3; color: white; }
+        .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 10px; font-size: 0.95rem; }
 
-        /* 輸入框群組 */
-        .input-item-wrap {
-            display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+        /* 電腦版卡片：寬鬆有立體感 */
+        .card {
+            background: #ffffff; padding: 15px 20px; border-radius: 10px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05); margin-bottom: 12px;
+            border-left: 6px solid #b2bec3; 
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 15px; overflow: hidden; box-sizing: border-box;
         }
-        input[type="text"] { 
-            padding: 6px; border: 1px solid #ddd; border-radius: 5px; 
-            width: 95px; font-size: 0.85rem; outline: none;
-        }
-        input[type="number"] { 
-            padding: 6px 2px; border: 1px solid #ddd; border-radius: 5px; 
-            width: 32px; font-size: 0.85rem; text-align: center; outline: none;
-        }
+        .card.active { border-left-color: #ff7675; background-color: #fffafb; }
+
+        .input-item-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        
+        input[type="text"] { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; width: 180px; font-size: 1rem; outline: none; }
+        input[type="number"] { padding: 8px 4px; border: 1px solid #ddd; border-radius: 6px; width: 50px; font-size: 1rem; text-align: center; outline: none; }
         input:focus { border-color: #4ecdc4; }
 
-        /* 小巧的確認按鈕 */
+        /* 電腦版大確認鈕 */
         .btn-calc { 
             background-color: #4ecdc4; color: white; border: none; 
-            padding: 6px 8px; border-radius: 5px; font-size: 0.8rem; 
+            padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; 
             font-weight: bold; cursor: pointer; flex-shrink: 0;
         }
 
-        /* 結果顯示區 (橫條內置中) */
+        /* 電腦版倒數區 */
         .result-box {
             flex-grow: 1; display: flex; flex-direction: column; 
             justify-content: center; align-items: flex-end; 
-            min-width: 90px; overflow: hidden; line-height: 1.2;
+            min-width: 150px; overflow: hidden; line-height: 1.3; margin-right: 10px;
         }
-        .countdown { font-size: 0.9rem; font-weight: bold; color: #e74c3c; white-space: nowrap; }
-        .target-time { font-size: 0.7rem; color: #95a5a6; white-space: nowrap; }
+        .countdown { font-size: 1.2rem; font-weight: bold; color: #e74c3c; white-space: nowrap; }
+        .target-time { font-size: 0.85rem; color: #95a5a6; white-space: nowrap; }
 
-        /* 刪除小按鈕 */
+        /* 電腦版大刪除鈕 */
         .btn-delete { 
-            background: none; border: none; color: #b2bec3; 
-            font-size: 1.1rem; cursor: pointer; padding: 4px; flex-shrink: 0;
+            background-color: #ff7675; color: white; border: none;
+            padding: 8px 14px; border-radius: 6px; font-size: 0.95rem;
+            cursor: pointer; flex-shrink: 0; transition: background 0.2s;
         }
-        .btn-delete:hover { color: #ff7675; }
+        .btn-delete:hover { background-color: #ef5f5f; }
 
-        /* 手機極小螢幕微調 (寬度低於 360px 縮小字體) */
-        @media (max-width: 360px) {
+
+        /* =======================================================
+           📱 智慧響應：當螢幕寬度小於 768px 時，切換為手機極簡版
+           ======================================================= */
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            h2 { font-size: 1.3rem; margin: 8px 0; }
+            
+            /* 縮小管理按鈕 */
+            .header-buttons { gap: 4px; margin-bottom: 10px; }
+            .btn-main { padding: 6px 2px; font-size: 0.72rem; border-radius: 5px; }
+            .btn-import { padding: 6px; font-size: 0.78rem; }
+
+            /* 壓扁卡片橫條 */
+            .card { padding: 5px 8px; margin-bottom: 5px; border-left-width: 4px; gap: 4px; border-radius: 6px; }
+            .input-item-wrap { gap: 3px; }
+            
+            /* 縮小輸入框體積 */
+            input[type="text"] { padding: 5px; width: 90px; font-size: 0.82rem; border-radius: 4px; }
+            input[type="number"] { padding: 5px 1px; width: 30px; font-size: 0.82rem; border-radius: 4px; }
+            
+            /* 確認鈕變成純打勾符號 */
+            .btn-calc { padding: 5px 6px; font-size: 0.78rem; border-radius: 4px; }
+            
+            /* 縮減時間文字區間 */
+            .result-box { min-width: 85px; margin-right: 0; line-height: 1.1; }
+            .countdown { font-size: 0.85rem; }
+            .target-time { font-size: 0.68rem; }
+
+            /* 刪除鈕在手機上變成極簡的文字叉叉 ✕ */
+            .btn-delete { 
+                background: none; color: #b2bec3; padding: 4px; 
+                font-size: 1.1rem; border-radius: 0;
+            }
+            .btn-delete:hover { color: #ff7675; background: none; }
+        }
+
+        /* 針對更小螢幕的極限縮微 (如 iPhone SE) */
+        @media (max-width: 350px) {
             input[type="text"] { width: 75px; font-size: 0.8rem; }
-            input[type="number"] { width: 28px; font-size: 0.8rem; }
-            .countdown { font-size: 0.8rem; }
+            input[type="number"] { width: 26px; font-size: 0.8rem; }
+            .countdown { font-size: 0.78rem; }
         }
     </style>
 </head>
@@ -110,7 +140,7 @@
     
     <div class="header-buttons">
         <button class="btn-main btn-add" onclick="ensureEmptyRow(true)">➕ 新增</button>
-        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址</button>
+        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址分享</button>
         <button class="btn-main btn-qr" onclick="showShareQR()">📱 QR碼</button>
         <button class="btn-main btn-code" onclick="copyShareCode()">📋 文字碼</button>
         <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
@@ -138,14 +168,41 @@
     <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
     <script>
+        // 固定抽屜鑰匙名稱，確保改版永不掉檔
+        const DB_KEY = 'pikmin_mushroom_final_database';
+        
         let timers = {};
         let notifiedItems = {}; 
         let html5QrcodeScanner = null;
 
         window.onload = function() { 
             requestNotificationPermission();
+            migrateOldData();  
             checkSharedData(); 
         };
+
+        function migrateOldData() {
+            const oldKeys = ['pikminMushrooms', 'pikminMushrooms_v2', 'pikminMushrooms_pwa', 'pikminMushrooms_v3', 'pikminMushrooms_v4'];
+            let migratedData = [];
+            const currentDb = localStorage.getItem(DB_KEY);
+            if (currentDb) return; 
+
+            for (let oldKey of oldKeys) {
+                const oldData = localStorage.getItem(oldKey);
+                if (oldData) {
+                    try {
+                        const parsed = JSON.parse(oldData);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            migratedData = parsed;
+                            break; 
+                        }
+                    } catch(e) {}
+                }
+            }
+            if (migratedData.length > 0) {
+                localStorage.setItem(DB_KEY, JSON.stringify(migratedData));
+            }
+        }
 
         function requestNotificationPermission() {
             if ("Notification" in window) { Notification.requestPermission(); }
@@ -153,18 +210,18 @@
 
         function getPackedData() {
             saveState();
-            const data = localStorage.getItem('pikminMushrooms_v4');
+            const data = localStorage.getItem(DB_KEY);
             if (!data || data === "[]") return null;
             return btoa(encodeURIComponent(data));
         }
 
         function mergeArrays(sharedArray) {
-            const localString = localStorage.getItem('pikminMushrooms_v4');
+            const localString = localStorage.getItem(DB_KEY);
             const localArray = localString ? JSON.parse(localString) : [];
             const mergedMap = new Map();
             localArray.forEach(item => mergedMap.set(item.id, item));
             sharedArray.forEach(item => mergedMap.set(item.id, item));
-            localStorage.setItem('pikminMushrooms_v4', JSON.stringify(Array.from(mergedMap.values())));
+            localStorage.setItem(DB_KEY, JSON.stringify(Array.from(mergedMap.values())));
             document.getElementById('tracker-container').innerHTML = '';
             loadState();
         }
@@ -250,9 +307,6 @@
             ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
         }
 
-        // =======================================================
-        // 核心渲染邏輯 (一橫條優化)
-        // =======================================================
         function addMushroom(data = null) {
             const container = document.getElementById('tracker-container');
             const id = data ? data.id : Date.now(); 
@@ -261,7 +315,7 @@
             card.className = 'card'; card.id = `card-${id}`;
             card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
             
-            // 一條橫線到底的結構
+            // 透過動態判斷，在 JS 初始化與 CSS 搭配，完美實現 PC/手機按鈕與元件的變型
             card.innerHTML = `
                 <div class="input-item-wrap">
                     <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
@@ -270,12 +324,13 @@
                     <button class="btn-calc" id="btn-${id}" onclick="startTracking(${id})">✓</button>
                 </div>
                 <div class="result-box" id="res-${id}">
-                    <span style="color: #bbb; font-size:0.8rem;">未設定</span>
+                    <span style="color: #bbb; font-size:0.85rem;">未設定</span>
                 </div>
-                <button class="btn-delete" onclick="removeMushroom(${id})">✕</button>
+                <button class="btn-delete" id="del-${id}" onclick="removeMushroom(${id})">✕</button>
             `;
             container.appendChild(card);
             attachEvents(id);
+            updateButtonText(id); // 依初始寬度更新按鈕文字
 
             if (data && data.targetTime && data.targetTime !== "Infinity") {
                 resumeTracking(id, parseInt(data.targetTime));
@@ -284,6 +339,29 @@
             }
             return id; 
         }
+
+        // 當電腦版寬度時，把純符號按鈕優化成有文字的版本
+        function updateButtonText(id) {
+            const btnCalc = document.getElementById(`btn-${id}`);
+            const btnDel = document.getElementById(`del-${id}`);
+            if (!btnCalc || !btnDel) return;
+            
+            if (window.innerWidth > 768) {
+                btnCalc.innerText = "確認";
+                btnDel.innerText = "刪除";
+            } else {
+                btnCalc.innerText = "✓";
+                btnDel.innerText = "✕";
+            }
+        }
+        // 監聽視窗縮放，確保拉動視窗時動態切換按鈕文字
+        window.addEventListener('resize', () => {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const id = card.id.replace('card-', '');
+                updateButtonText(id);
+            });
+        });
 
         function attachEvents(id) {
             const nameInput = document.getElementById(`name-${id}`);
@@ -365,7 +443,13 @@
 
             const rM = Math.floor(diff / 60000);
             const rS = Math.floor((diff % 60000) / 1000);
-            resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">${timeString} 重生</div>`;
+            
+            // 根據寬度彈性排版文字
+            if(window.innerWidth > 768) {
+                resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
+            } else {
+                resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">${timeString} 重生</div>`;
+            }
         }
 
         function sendWebNotification(title, bodyText) {
@@ -404,11 +488,11 @@
                     });
                 }
             });
-            localStorage.setItem('pikminMushrooms_v4', JSON.stringify(data));
+            localStorage.setItem(DB_KEY, JSON.stringify(data));
         }
 
         function loadState() {
-            const stored = localStorage.getItem('pikminMushrooms_v4');
+            const stored = localStorage.getItem(DB_KEY);
             if (stored) {
                 const data = JSON.parse(stored);
                 if (data.length > 0) {
