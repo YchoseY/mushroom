@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>皮克敏蘑菇戰情板 (旗艦通知版)</title>
+    <title>皮克敏蘑菇戰情板 (極簡橫條版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -12,29 +12,30 @@
     <meta name="apple-mobile-web-app-title" content="蘑菇戰情板">
     
     <style>
+        /* --- 全局極簡設定 --- */
         body {
-            font-family: "Microsoft JhengHei", sans-serif;
-            background-color: #f4f7f6; color: #333; padding: 15px;
-            max-width: 800px; margin: 0 auto;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "微軟正黑體", sans-serif;
+            background-color: #f1f2f6; color: #2d3436; padding: 10px;
+            max-width: 1000px; margin: 0 auto;
         }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 15px; }
+        h2 { text-align: center; color: #2c3e50; margin: 10px 0; font-size: 1.4rem; }
         
-        /* 按鈕區域排版 */
+        /* 管理按鈕區：微縮體積 */
         .header-buttons {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 15px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 12px;
         }
         .btn-main {
-            border: none; padding: 10px; border-radius: 8px;
-            font-size: 0.95rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
+            border: none; padding: 8px 4px; border-radius: 6px;
+            font-size: 0.75rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center;
         }
         .btn-add { background-color: #ffe66d; color: #333; }
+        .btn-url { background-color: #fd9644; color: white; }
         .btn-qr { background-color: #6c5ce7; color: white; }
         .btn-code { background-color: #0984e3; color: white; }
-        .btn-url { background-color: #fd9644; color: white; } /* 網頁網址分享按鈕 */
-        .btn-import { background-color: #00b894; color: white; grid-column: span 2; } /* 佔滿整行 */
+        .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 6px; font-size: 0.8rem; }
 
-        /* 彈出視窗樣式 */
+        /* 彈出視窗 */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -46,43 +47,73 @@
         }
         #qrcode { display: flex; justify-content: center; margin: 15px 0; }
 
-        /* 卡片排版 */
+        /* =======================================================
+           核心：極簡橫條卡片排版 (完美支援手機不折行)
+           ======================================================= */
         .card {
-            background: #ffffff; padding: 12px 15px; border-radius: 10px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.05); margin-bottom: 10px;
-            border-left: 6px solid #ccc; display: flex; flex-wrap: wrap;
-            align-items: center; gap: 10px; transition: all 0.3s ease;
+            background: #ffffff; padding: 6px 10px; border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 6px;
+            border-left: 4px solid #b2bec3; 
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 6px; overflow: hidden; box-sizing: border-box;
         }
-        .card.active { border-left-color: #ff6b6b; }
-        .input-group { display: flex; align-items: center; gap: 5px; }
-        input[type="text"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 140px; font-size: 1rem; }
-        input[type="number"] { padding: 8px; border: 1px solid #ddd; border-radius: 6px; width: 55px; font-size: 1rem; text-align: center; }
-        .btn-action { padding: 8px 12px; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
-        .btn-calc { background-color: #4ecdc4; color: white; }
-        .btn-delete { background-color: #ff5252; color: white; }
-        .result-box { flex-grow: 1; text-align: right; font-size: 0.95rem; min-width: 180px; }
-        .countdown { font-size: 1.1rem; font-weight: bold; color: #e74c3c; }
-        .target-time { font-size: 0.85rem; color: #7f8c8d; }
+        .card.active { border-left-color: #ff7675; background-color: #fff9f9; }
 
-        @media (max-width: 600px) {
-            .card { flex-direction: column; align-items: flex-start; }
-            .input-group { width: 100%; }
-            input[type="text"] { flex-grow: 1; }
-            .result-box { text-align: left; width: 100%; margin-top: 5px; }
-            .btn-action { width: 100%; }
+        /* 輸入框群組 */
+        .input-item-wrap {
+            display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+        }
+        input[type="text"] { 
+            padding: 6px; border: 1px solid #ddd; border-radius: 5px; 
+            width: 95px; font-size: 0.85rem; outline: none;
+        }
+        input[type="number"] { 
+            padding: 6px 2px; border: 1px solid #ddd; border-radius: 5px; 
+            width: 32px; font-size: 0.85rem; text-align: center; outline: none;
+        }
+        input:focus { border-color: #4ecdc4; }
+
+        /* 小巧的確認按鈕 */
+        .btn-calc { 
+            background-color: #4ecdc4; color: white; border: none; 
+            padding: 6px 8px; border-radius: 5px; font-size: 0.8rem; 
+            font-weight: bold; cursor: pointer; flex-shrink: 0;
+        }
+
+        /* 結果顯示區 (橫條內置中) */
+        .result-box {
+            flex-grow: 1; display: flex; flex-direction: column; 
+            justify-content: center; align-items: flex-end; 
+            min-width: 90px; overflow: hidden; line-height: 1.2;
+        }
+        .countdown { font-size: 0.9rem; font-weight: bold; color: #e74c3c; white-space: nowrap; }
+        .target-time { font-size: 0.7rem; color: #95a5a6; white-space: nowrap; }
+
+        /* 刪除小按鈕 */
+        .btn-delete { 
+            background: none; border: none; color: #b2bec3; 
+            font-size: 1.1rem; cursor: pointer; padding: 4px; flex-shrink: 0;
+        }
+        .btn-delete:hover { color: #ff7675; }
+
+        /* 手機極小螢幕微調 (寬度低於 360px 縮小字體) */
+        @media (max-width: 360px) {
+            input[type="text"] { width: 75px; font-size: 0.8rem; }
+            input[type="number"] { width: 28px; font-size: 0.8rem; }
+            .countdown { font-size: 0.8rem; }
         }
     </style>
 </head>
 <body>
 
-    <h2>🍄 蘑菇戰情板 (智慧連線版)</h2>
+    <h2>🍄 蘑菇戰情板</h2>
     
     <div class="header-buttons">
-        <button class="btn-main btn-add" onclick="ensureEmptyRow(true)">➕ 新增紀錄</button>
-        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 LINE 網址分享</button>
-        <button class="btn-main btn-qr" onclick="showShareQR()">📱 當面 QR 分享</button>
-        <button class="btn-main btn-code" onclick="copyShareCode()">📋 複製文字碼</button>
-        <button class="btn-main btn-import" onclick="openImportModal()">📥 匯入資料 / 開相機掃描條碼</button>
+        <button class="btn-main btn-add" onclick="ensureEmptyRow(true)">➕ 新增</button>
+        <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址</button>
+        <button class="btn-main btn-qr" onclick="showShareQR()">📱 QR碼</button>
+        <button class="btn-main btn-code" onclick="copyShareCode()">📋 文字碼</button>
+        <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
     </div>
     
     <div id="tracker-container"></div>
@@ -91,111 +122,80 @@
     <div class="modal" id="qrModal">
         <h3>掃描此 QR Code 分享戰情</h3>
         <div id="qrcode"></div>
-        <button class="btn-main btn-delete" onclick="closeQRModal()">關閉</button>
+        <button class="btn-main btn-url" style="background:#888" onclick="closeQRModal()">關閉</button>
     </div>
 
     <div class="modal-backdrop" id="import-backdrop" onclick="closeImportModal()"></div>
     <div class="modal" id="importModal">
         <h3>📥 匯入朋友的戰情</h3>
-        <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px;">📷 打開相機掃描 QR</button>
+        <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px; width: 100%;">📷 打開相機掃描 QR</button>
         <div id="reader" style="width: 100%; display: none; margin-bottom: 10px;"></div>
-        
-        <p style="font-size: 0.85rem; color: #666;">或在下方貼上朋友的文字碼：</p>
-        <input type="text" id="manualCodeInput" placeholder="在此貼上文字碼" style="width: 90%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
-        <button class="btn-main btn-import" onclick="importManualCode()">確認貼上匯入</button>
-        <button class="btn-main btn-add" onclick="closeImportModal()" style="background:#aaa; color:#fff; margin-top: 10px;">取消</button>
+        <input type="text" id="manualCodeInput" placeholder="在此貼上文字碼" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        <button class="btn-main btn-import" onclick="importManualCode()" style="width: 100%;">確認貼上匯入</button>
+        <button class="btn-main btn-add" onclick="closeImportModal()" style="background:#aaa; color:#fff; margin-top: 10px; width: 100%;">取消</button>
     </div>
 
     <audio id="alert-sound" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
     <script>
         let timers = {};
-        let notifiedItems = {}; // 記錄哪些蘑菇已經發過通知，避免重發
+        let notifiedItems = {}; 
         let html5QrcodeScanner = null;
 
         window.onload = function() { 
             requestNotificationPermission();
-            checkSharedData(); // 優先檢查網址是否有帶分享參數
+            checkSharedData(); 
         };
 
-        // 要求通知權限
         function requestNotificationPermission() {
-            if ("Notification" in window) {
-                Notification.requestPermission().then(permission => {
-                    if (permission !== "granted") {
-                        console.log("用戶拒絕了通知權限。");
-                    }
-                });
-            }
+            if ("Notification" in window) { Notification.requestPermission(); }
         }
 
-        // === 分享核心：資料封裝與智慧合併 ===
         function getPackedData() {
             saveState();
-            const data = localStorage.getItem('pikminMushrooms_v3');
+            const data = localStorage.getItem('pikminMushrooms_v4');
             if (!data || data === "[]") return null;
             return btoa(encodeURIComponent(data));
         }
 
-        // 智慧型合併陣列
         function mergeArrays(sharedArray) {
-            const localString = localStorage.getItem('pikminMushrooms_v3');
+            const localString = localStorage.getItem('pikminMushrooms_v4');
             const localArray = localString ? JSON.parse(localString) : [];
-
             const mergedMap = new Map();
             localArray.forEach(item => mergedMap.set(item.id, item));
             sharedArray.forEach(item => mergedMap.set(item.id, item));
-            
-            localStorage.setItem('pikminMushrooms_v3', JSON.stringify(Array.from(mergedMap.values())));
-            
-            // 重新刷新畫面
+            localStorage.setItem('pikminMushrooms_v4', JSON.stringify(Array.from(mergedMap.values())));
             document.getElementById('tracker-container').innerHTML = '';
             loadState();
         }
 
-        // 功能 1：功能保留 - 網頁 URL 網址分享
         function shareViaURL() {
             const packed = getPackedData();
             if (!packed) return alert('目前沒有資料可以分享喔！');
             const shareUrl = window.location.origin + window.location.pathname + '?share=' + packed;
-
             navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('🔗 LINE 分享網址已複製！\n沒使用 PWA 的朋友直接點開網址，就能將資料合併進去！');
-            }).catch(() => {
-                prompt("請複製以下網址：", shareUrl);
-            });
+                alert('🔗 LINE 分享網址已複製！');
+            }).catch(() => { prompt("請複製以下網址：", shareUrl); });
         }
 
-        // 網頁載入時檢查網址
         function checkSharedData() {
             const urlParams = new URLSearchParams(window.location.search);
             const shareData = urlParams.get('share');
-            
             if (shareData) {
                 try {
                     const decodedString = decodeURIComponent(atob(shareData));
-                    const sharedArray = JSON.parse(decodedString);
-                    mergeArrays(sharedArray);
-                    
-                    // 移除網址後綴，保持乾淨
+                    mergeArrays(JSON.parse(decodedString));
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    alert("✅ 已成功將網址中的蘑菇紀錄「合併」進來！");
-                } catch(e) {
-                    alert("❌ 網址解析失敗，資料可能不完整。");
-                }
-            } else {
-                loadState();
-            }
+                    alert("✅ 已成功合併紀錄！");
+                } catch(e) { alert("❌ 網址解析失敗。"); }
+            } else { loadState(); }
         }
 
-        // 功能 2：QR Code 顯示
         function showShareQR() {
             const packed = getPackedData();
-            if (!packed) return alert('目前沒有資料可以產生 QR Code 喔！');
-            
+            if (!packed) return alert('目前沒有資料喔！');
             document.getElementById('qr-backdrop').style.display = 'block';
             document.getElementById('qrModal').style.display = 'block';
-            
             const qrContainer = document.getElementById("qrcode");
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, { text: packed, width: 200, height: 200 });
@@ -205,25 +205,20 @@
             document.getElementById('qrModal').style.display = 'none';
         }
 
-        // 功能 3：文字碼複製
         function copyShareCode() {
             const packed = getPackedData();
-            if (!packed) return alert('目前沒有資料可以複製喔！');
+            if (!packed) return alert('目前沒有資料喔！');
             const prefixCode = "PKM-" + packed;
-            navigator.clipboard.writeText(prefixCode).then(() => {
-                alert('📋 PWA 專用文字碼已複製！可以傳給開 PWA 的朋友去貼上了。');
-            }).catch(() => {
-                prompt("請手動複製此代碼：", prefixCode);
-            });
+            navigator.clipboard.writeText(prefixCode).then(() => { alert('📋 文字碼已複製！'); })
+            .catch(() => { prompt("請手動複製此代碼：", prefixCode); });
         }
 
-        // 功能 4：匯入功能處理
         function openImportModal() {
             document.getElementById('import-backdrop').style.display = 'block';
             document.getElementById('importModal').style.display = 'block';
         }
         function closeImportModal() {
-            if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => console.log(e)); html5QrcodeScanner = null; }
+            if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => {}); html5QrcodeScanner = null; }
             document.getElementById('reader').style.display = 'none';
             document.getElementById('import-backdrop').style.display = 'none';
             document.getElementById('importModal').style.display = 'none';
@@ -233,36 +228,30 @@
             let val = document.getElementById('manualCodeInput').value.trim();
             if(!val) return alert('請先貼上代碼！');
             if (val.startsWith("PKM-")) val = val.replace("PKM-", "");
-            
             try {
-                const decodedString = decodeURIComponent(atob(val));
-                mergeArrays(JSON.parse(decodedString));
+                mergeArrays(JSON.parse(decodeURIComponent(atob(val))));
                 document.getElementById('manualCodeInput').value = '';
                 closeImportModal();
-                alert("✅ 成功合併文字碼資料！");
+                alert("✅ 成功合併資料！");
             } catch(e) { alert("❌ 代碼解析失敗。"); }
         }
 
         function startCameraScan() {
             document.getElementById('reader').style.display = 'block';
             html5QrcodeScanner = new Html5Qrcode("reader");
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
                 (decodedText) => {
                     try {
-                        const decodedString = decodeURIComponent(atob(decodedText));
-                        mergeArrays(JSON.parse(decodedString));
+                        mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText))));
                         closeImportModal();
-                        alert("✅ 條碼掃描成功，資料已智慧合併！");
+                        alert("✅ 條碼掃描成功！");
                     } catch(e) { alert("條碼格式錯誤。"); }
-                },
-                () => {}
-            ).catch(err => { alert("無法開啟相機，請確認權限。"); document.getElementById('reader').style.display = 'none'; });
+                }, () => {}
+            ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
         }
 
         // =======================================================
-        // 輸入、倒數、自動補列、通知發送核心邏輯
+        // 核心渲染邏輯 (一橫條優化)
         // =======================================================
         function addMushroom(data = null) {
             const container = document.getElementById('tracker-container');
@@ -272,12 +261,18 @@
             card.className = 'card'; card.id = `card-${id}`;
             card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
             
+            // 一條橫線到底的結構
             card.innerHTML = `
-                <div class="input-group"><input type="text" id="name-${id}" placeholder="蘑菇名稱/地點" value="${data ? data.name : ''}"></div>
-                <div class="input-group">剩餘 <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}"><input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}"></div>
-                <button class="btn-action btn-calc" id="btn-${id}" onclick="startTracking(${id})">確認</button>
-                <div class="result-box" id="res-${id}"><span style="color: #aaa;">尚未設定</span></div>
-                <button class="btn-action btn-delete" onclick="removeMushroom(${id})">✖</button>
+                <div class="input-item-wrap">
+                    <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
+                    <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
+                    <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
+                    <button class="btn-calc" id="btn-${id}" onclick="startTracking(${id})">✓</button>
+                </div>
+                <div class="result-box" id="res-${id}">
+                    <span style="color: #bbb; font-size:0.8rem;">未設定</span>
+                </div>
+                <button class="btn-delete" onclick="removeMushroom(${id})">✕</button>
             `;
             container.appendChild(card);
             attachEvents(id);
@@ -323,14 +318,12 @@
         function startTracking(id) {
             const min = parseInt(document.getElementById(`m-${id}`).value) || 0;
             const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
-            if (min === 0 && sec === 0) { alert("請輸入剩餘的時間！"); return; }
+            if (min === 0 && sec === 0) { return; }
 
             const now = Date.now();
-            const targetTime = now + (((min * 60) + sec + 300) * 1000); // 剩餘時間 + 5分鐘冷卻
+            const targetTime = now + (((min * 60) + sec + 300) * 1000);
 
-            // 重置此 ID 的通知狀態
             delete notifiedItems[id];
-
             resumeTracking(id, targetTime);
             sortMushrooms();
             saveState(); 
@@ -338,7 +331,8 @@
         }
 
         function resumeTracking(id, targetTime) {
-            const card = document.getElementById(`card-${id}`);
+            const card = document.getElementById('card-' + id);
+            if (!card) return;
             card.dataset.respawnTime = targetTime;
             card.classList.add('active');
             if (timers[id]) clearInterval(timers[id]);
@@ -352,38 +346,32 @@
 
         function updateCountdown(id, targetTime, timeString) {
             const resDiv = document.getElementById(`res-${id}`);
-            const nameStr = document.getElementById(`name-${id}`).value || "未命名蘑菇";
+            const nameStr = document.getElementById(`name-${id}`).value || "蘑菇";
             if (!resDiv) return;
             
             const now = Date.now();
             const diff = targetTime - now;
 
-            // === 核心修改：提前 1 分鐘 (60秒) 發送 PWA 通知 ===
             if (diff > 0 && diff <= 60000 && !notifiedItems[id]) {
-                notifiedItems[id] = true; // 鎖定，避免重發
-                sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生，準備派隊！`);
+                notifiedItems[id] = true; 
+                sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`);
             }
 
             if (diff <= 0) {
-                resDiv.innerHTML = `<span class="countdown">🍄 已重生！</span>`;
+                resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
                 clearInterval(timers[id]);
                 return;
             }
 
-            resDiv.innerHTML = `<div class="countdown">剩餘: ${Math.floor(diff / 60000)}分 ${Math.floor((diff % 60000) / 1000)}秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
+            const rM = Math.floor(diff / 60000);
+            const rS = Math.floor((diff % 60000) / 1000);
+            resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">${timeString} 重生</div>`;
         }
 
-        // 觸發原生通知與音效
         function sendWebNotification(title, bodyText) {
-            // 播放內建音效
             try { document.getElementById('alert-sound').play(); } catch(e){}
-
-            // 跳出系統橫幅通知
             if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: bodyText,
-                    icon: "https://cdn-icons-png.flaticon.com/512/188/188987.png" // 裝飾通知的小圖示
-                });
+                new Notification(title, { body: bodyText });
             }
         }
 
@@ -407,17 +395,20 @@
             const data = [];
             cards.forEach(card => {
                 const id = card.id.replace('card-', '');
-                data.push({
-                    id: id, name: document.getElementById(`name-${id}`).value,
-                    min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value,
-                    targetTime: card.dataset.respawnTime
-                });
+                const nameEl = document.getElementById(`name-${id}`);
+                if (nameEl) {
+                    data.push({
+                        id: id, name: nameEl.value,
+                        min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value,
+                        targetTime: card.dataset.respawnTime
+                    });
+                }
             });
-            localStorage.setItem('pikminMushrooms_v3', JSON.stringify(data));
+            localStorage.setItem('pikminMushrooms_v4', JSON.stringify(data));
         }
 
         function loadState() {
-            const stored = localStorage.getItem('pikminMushrooms_v3');
+            const stored = localStorage.getItem('pikminMushrooms_v4');
             if (stored) {
                 const data = JSON.parse(stored);
                 if (data.length > 0) {
