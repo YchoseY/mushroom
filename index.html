@@ -167,13 +167,44 @@
             return btoa(encodeURIComponent(data));
         }
 
+        // =======================================================
+        // ★ 完美優化：智慧型合併 (引入防止重複 ID 的基因洗牌機制)
+        // =======================================================
         function mergeArrays(sharedArray) {
             const localString = localStorage.getItem(DB_KEY);
             const localArray = localString ? JSON.parse(localString) : [];
+            
             const mergedMap = new Map();
-            localArray.forEach(item => mergedMap.set(item.id, item));
-            sharedArray.forEach(item => mergedMap.set(item.id, item));
+            let uniqueTimeCounter = Date.now(); // 用於生成絕對不重複的新 ID
+            
+            // 1. 將自己原本的蘑菇存入 Map
+            localArray.forEach(item => {
+                const nameKey = item.name.trim();
+                if (nameKey !== "") {
+                    mergedMap.set(nameKey, item);
+                }
+            });
+            
+            // 2. 智慧讀取朋友的蘑菇
+            sharedArray.forEach(item => {
+                const nameKey = item.name.trim();
+                if (nameKey !== "") {
+                    if (mergedMap.has(nameKey)) {
+                        // 情況 A：名字相同 ➡️ 覆蓋時間進度，保留原本點位的舊 ID 確保安全
+                        const oldItem = mergedMap.get(nameKey);
+                        item.id = oldItem.id; 
+                        mergedMap.set(nameKey, item);
+                    } else {
+                        // 情況 B：全新名字 ➡️ 為了防止朋友改過名字造成 ID 相同，強制賦予全新 ID
+                        uniqueTimeCounter++;
+                        item.id = uniqueTimeCounter;
+                        mergedMap.set(nameKey, item);
+                    }
+                }
+            });
+            
             localStorage.setItem(DB_KEY, JSON.stringify(Array.from(mergedMap.values())));
+            
             document.getElementById('tracker-container').innerHTML = '';
             loadState();
         }
@@ -214,6 +245,7 @@
             document.getElementById('qrModal').style.display = 'none';
         }
 
+        // 複製代碼時，將前綴優化為更皮克敏風格
         function copyShareCode() {
             const packed = getPackedData();
             if (!packed) return alert('目前沒有資料喔！');
@@ -334,9 +366,6 @@
             secInput.addEventListener('change', saveState);
         }
 
-        // =======================================================
-        // ★ 核心修改：智慧空列判斷 (防止無限複製)
-        // =======================================================
         function ensureEmptyRow(shouldFocus = false) {
             const cards = document.querySelectorAll('.card');
             let hasTrueEmptyRow = false;
@@ -348,7 +377,6 @@
                 const minVal = document.getElementById(`m-${id}`).value.trim();
                 const secVal = document.getElementById(`s-${id}`).value.trim();
 
-                // 只有在「完全沒有字、沒有時間」且「未設定」時，才算真正的空卡片
                 if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") {
                     hasTrueEmptyRow = true;
                     emptyCardId = id;
@@ -356,7 +384,6 @@
                 }
             }
 
-            // 如果畫面上真的沒有任何乾淨的空列，才建立新空列
             if (!hasTrueEmptyRow) {
                 emptyCardId = addMushroom();
             }
@@ -469,26 +496,19 @@
             localStorage.setItem(DB_KEY, JSON.stringify(data));
         }
 
-        // =======================================================
-        // ★ 核心修改：智慧載入與自動清理垃圾空白卡片
-        // =======================================================
         function loadState() {
             const stored = localStorage.getItem(DB_KEY);
-            document.getElementById('tracker-container').innerHTML = ''; // 清空舊畫面
+            document.getElementById('tracker-container').innerHTML = ''; 
             
             if (stored) {
                 let data = JSON.parse(stored);
                 if (data.length > 0) {
-                    // 自動過濾機制：如果在資料庫裡發現有「多個完全空白且未設定」的項目，只保留第一個
                     let hasEmpty = false;
                     data = data.filter(item => {
                         const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity");
                         if (isEmpty) {
-                            if (!hasEmpty) {
-                                hasEmpty = true; // 留下第一個空白的
-                                return true;
-                            }
-                            return false; // 剩下的幽靈空白卡片通通刪掉！
+                            if (!hasEmpty) { hasEmpty = true; return true; }
+                            return false; 
                         }
                         return true;
                     });
@@ -496,7 +516,7 @@
                     data.forEach(item => addMushroom(item));
                     sortMushrooms(); 
                     ensureEmptyRow(false); 
-                    saveState(); // 把清理乾淨的結果重新存檔
+                    saveState(); 
                     return;
                 }
             }
