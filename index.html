@@ -19,7 +19,7 @@
         }
         h2 { text-align: center; color: #2c3e50; margin: 15px 0; font-size: 1.6rem; }
         
-        .header-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+        .header-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
         .btn-main {
             border: none; padding: 12px 10px; border-radius: 8px;
             font-size: 1rem; font-weight: bold; cursor: pointer;
@@ -31,6 +31,26 @@
         .btn-code { background-color: #2575fc; color: white; }
         .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 10px; font-size: 0.95rem; }
 
+        /* =======================================================
+           ★ 全新設計：頂部智慧重生標籤區 (Respawn Badges Area)
+           ======================================================= */
+        #respawn-badge-container {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; 
+            padding: 8px; background: rgba(220, 225, 230, 0.4); border-radius: 8px;
+        }
+        #respawn-badge-container:empty { display: none; } /* 沒蘑菇重生時完全隱形 */
+        
+        .respawn-title-lbl { width: 100%; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 2px; }
+
+        .badge-item {
+            background-color: #ff7675; color: white; padding: 8px 12px; border-radius: 6px;
+            font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;
+            box-shadow: 0 2px 5px rgba(255, 118, 117, 0.3); transition: transform 0.1s, background 0.2s;
+        }
+        .badge-item:hover { background-color: #e84393; transform: scale(1.03); }
+        .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 6px; border-radius: 4px; }
+
+        /* 卡片主體排版 */
         .card {
             background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px;
@@ -38,34 +58,25 @@
             display: flex; align-items: center; justify-content: space-between;
             gap: 15px; overflow: hidden; box-sizing: border-box;
         }
-        .card.active { border-left-color: #ff6b6b; background-color: rgba(255, 245, 245, 0.95); }
+        .card.active { border-left-color: #2ecc71; background-color: rgba(245, 255, 245, 0.95); }
+        
+        /* 當蘑菇處於「已重生」狀態時，下方卡片進入隱形編輯模式，等待從小標籤點擊喚醒 */
+        .card.is-respawned { display: none !important; }
 
         .input-item-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        
         input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 180px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); }
         input[type="number"] { padding: 8px 4px; border: 1px solid #ccc; border-radius: 6px; width: 50px; font-size: 1rem; text-align: center; outline: none; background: rgba(255,255,255,0.9); }
         input:focus { border-color: #2ecc71; box-shadow: 0 0 5px rgba(46,204,113,0.4); }
 
-        .btn-calc { 
-            background-color: #2ecc71; color: white; border: none; 
-            padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; 
-            font-weight: bold; cursor: pointer; flex-shrink: 0;
-        }
-
-        .result-box {
-            flex-grow: 1; display: flex; flex-direction: column; 
-            justify-content: center; align-items: flex-end; 
-            min-width: 150px; overflow: hidden; line-height: 1.3; margin-right: 10px;
-        }
+        .btn-calc { background-color: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; flex-shrink: 0; }
+        .result-box { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; min-width: 150px; overflow: hidden; line-height: 1.3; margin-right: 10px; }
         .countdown { font-size: 1.2rem; font-weight: bold; color: #d63031; white-space: nowrap; }
         .target-time { font-size: 0.85rem; color: #636e72; white-space: nowrap; }
+        .btn-delete { background-color: #ff7675; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; flex-shrink: 0; }
 
-        .btn-delete { 
-            background-color: #ff7675; color: white; border: none;
-            padding: 8px 14px; border-radius: 6px; font-size: 0.95rem;
-            cursor: pointer; flex-shrink: 0; transition: background 0.2s;
-        }
-        .btn-delete:hover { background-color: #ef5f5f; }
+        /* 彈出視窗 */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; }
+        .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 290; }
 
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -83,7 +94,6 @@
             .countdown { font-size: 1.1rem; } 
             .target-time { font-size: 0.85rem; } 
             .btn-delete { background: none; color: #a4b0be; padding: 4px 8px; font-size: 1.3rem; border-radius: 0; }
-            .btn-delete:hover { color: #ff7675; background: none; }
         }
     </style>
 </head>
@@ -98,6 +108,8 @@
         <button class="btn-main btn-code" onclick="copyShareCode()">📋 文字碼</button>
         <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
     </div>
+
+    <div id="respawn-badge-container"></div>
     
     <div id="tracker-container"></div>
 
@@ -144,21 +156,14 @@
                 if (oldData) {
                     try {
                         const parsed = JSON.parse(oldData);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            migratedData = parsed;
-                            break; 
-                        }
+                        if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; }
                     } catch(e) {}
                 }
             }
-            if (migratedData.length > 0) {
-                localStorage.setItem(DB_KEY, JSON.stringify(migratedData));
-            }
+            if (migratedData.length > 0) { localStorage.setItem(DB_KEY, JSON.stringify(migratedData)); }
         }
 
-        function requestNotificationPermission() {
-            if ("Notification" in window) { Notification.requestPermission(); }
-        }
+        function requestNotificationPermission() { if ("Notification" in window) { Notification.requestPermission(); } }
 
         function getPackedData() {
             saveState();
@@ -167,35 +172,22 @@
             return btoa(encodeURIComponent(data));
         }
 
-        // =======================================================
-        // ★ 完美優化：智慧型合併 (引入防止重複 ID 的基因洗牌機制)
-        // =======================================================
         function mergeArrays(sharedArray) {
             const localString = localStorage.getItem(DB_KEY);
             const localArray = localString ? JSON.parse(localString) : [];
-            
             const mergedMap = new Map();
-            let uniqueTimeCounter = Date.now(); // 用於生成絕對不重複的新 ID
+            let uniqueTimeCounter = Date.now();
             
-            // 1. 將自己原本的蘑菇存入 Map
-            localArray.forEach(item => {
-                const nameKey = item.name.trim();
-                if (nameKey !== "") {
-                    mergedMap.set(nameKey, item);
-                }
-            });
+            localArray.forEach(item => { const nameKey = item.name.trim(); if (nameKey !== "") { mergedMap.set(nameKey, item); } });
             
-            // 2. 智慧讀取朋友的蘑菇
             sharedArray.forEach(item => {
                 const nameKey = item.name.trim();
                 if (nameKey !== "") {
                     if (mergedMap.has(nameKey)) {
-                        // 情況 A：名字相同 ➡️ 覆蓋時間進度，保留原本點位的舊 ID 確保安全
                         const oldItem = mergedMap.get(nameKey);
                         item.id = oldItem.id; 
                         mergedMap.set(nameKey, item);
                     } else {
-                        // 情況 B：全新名字 ➡️ 為了防止朋友改過名字造成 ID 相同，強制賦予全新 ID
                         uniqueTimeCounter++;
                         item.id = uniqueTimeCounter;
                         mergedMap.set(nameKey, item);
@@ -204,7 +196,6 @@
             });
             
             localStorage.setItem(DB_KEY, JSON.stringify(Array.from(mergedMap.values())));
-            
             document.getElementById('tracker-container').innerHTML = '';
             loadState();
         }
@@ -213,9 +204,7 @@
             const packed = getPackedData();
             if (!packed) return alert('目前沒有資料可以分享喔！');
             const shareUrl = window.location.origin + window.location.pathname + '?share=' + packed;
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('🔗 LINE 分享網址已複製！');
-            }).catch(() => { prompt("請複製以下網址：", shareUrl); });
+            navigator.clipboard.writeText(shareUrl).then(() => { alert('🔗 LINE 分享網址已複製！'); }).catch(() => { prompt("請複製以下網址：", shareUrl); });
         }
 
         function checkSharedData() {
@@ -240,53 +229,37 @@
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, { text: packed, width: 200, height: 200 });
         }
-        function closeQRModal() {
-            document.getElementById('qr-backdrop').style.display = 'none';
-            document.getElementById('qrModal').style.display = 'none';
-        }
+        function closeQRModal() { document.getElementById('qr-backdrop').style.display = 'none'; document.getElementById('qrModal').style.display = 'none'; }
 
-        // 複製代碼時，將前綴優化為更皮克敏風格
         function copyShareCode() {
             const packed = getPackedData();
             if (!packed) return alert('目前沒有資料喔！');
             const prefixCode = "PIKMIN-" + packed;
-            navigator.clipboard.writeText(prefixCode).then(() => { alert('📋 皮克敏文字碼已複製！'); })
-            .catch(() => { prompt("請手動複製此代碼：", prefixCode); });
+            navigator.clipboard.writeText(prefixCode).then(() => { alert('📋 皮克敏文字碼已複製！'); }).catch(() => { prompt("請手動複製此代碼：", prefixCode); });
         }
 
-        function openImportModal() {
-            document.getElementById('import-backdrop').style.display = 'block';
-            document.getElementById('importModal').style.display = 'block';
-        }
+        function openImportModal() { document.getElementById('import-backdrop').style.display = 'block'; document.getElementById('importModal').style.display = 'block'; }
         function closeImportModal() {
             if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => {}); html5QrcodeScanner = null; }
-            document.getElementById('reader').style.display = 'none';
-            document.getElementById('import-backdrop').style.display = 'none';
-            document.getElementById('importModal').style.display = 'none';
+            document.getElementById('reader').style.display = 'none'; document.getElementById('import-backdrop').style.display = 'none'; document.getElementById('importModal').style.display = 'none';
         }
 
         function importManualCode() {
             let val = document.getElementById('manualCodeInput').value.trim();
             if(!val) return alert('請先貼上代碼！');
-            if (val.startsWith("PIKMIN-")) val = val.replace("PIKMIN-", "");
-            if (val.startsWith("PKM-")) val = val.replace("PKM-", "");
+            if (val.startsWith("PIKMIN-") || val.startsWith("PKM-")) val = val.replace("PIKMIN-", "").replace("PKM-", "");
             try {
                 mergeArrays(JSON.parse(decodeURIComponent(atob(val))));
-                document.getElementById('manualCodeInput').value = '';
-                closeImportModal();
-                alert("✅ 成功合併資料！");
+                document.getElementById('manualCodeInput').value = ''; closeImportModal(); alert("✅ 成功合併資料！");
             } catch(e) { alert("❌ 代碼解析失敗。"); }
         }
 
         function startCameraScan() {
-            document.getElementById('reader').style.display = 'block';
-            html5QrcodeScanner = new Html5Qrcode("reader");
+            document.getElementById('reader').style.display = 'block'; html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
                 (decodedText) => {
                     try {
-                        mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText))));
-                        closeImportModal();
-                        alert("✅ 條碼掃描成功！");
+                        mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText)))); closeImportModal(); alert("✅ 條碼掃描成功！");
                     } catch(e) { alert("條碼格式錯誤。"); }
                 }, () => {}
             ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
@@ -327,25 +300,14 @@
         }
 
         function updateButtonText(id) {
-            const btnCalc = document.getElementById(`btn-${id}`);
-            const btnDel = document.getElementById(`del-${id}`);
+            const btnCalc = document.getElementById(`btn-${id}`); const btnDel = document.getElementById(`del-${id}`);
             if (!btnCalc || !btnDel) return;
-            
-            if (window.innerWidth > 768) {
-                btnCalc.innerText = "確認";
-                btnDel.innerText = "刪除";
-            } else {
-                btnCalc.innerText = "✓";
-                btnDel.innerText = "✕";
-            }
+            if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }
         }
 
         window.addEventListener('resize', () => {
-            const cards = document.querySelectorAll('.card');
-            cards.forEach(card => {
-                const id = card.id.replace('card-', '');
-                updateButtonText(id);
-            });
+            document.querySelectorAll('.card').forEach(card => { updateButtonText(card.id.replace('card-', '')); });
+            renderRespawnBadges(); // 縮放時也重新渲染標籤
         });
 
         function attachEvents(id) {
@@ -368,8 +330,7 @@
 
         function ensureEmptyRow(shouldFocus = false) {
             const cards = document.querySelectorAll('.card');
-            let hasTrueEmptyRow = false;
-            let emptyCardId = null;
+            let hasTrueEmptyRow = false; let emptyCardId = null;
 
             for (let card of cards) {
                 const id = card.id.replace('card-', '');
@@ -378,15 +339,11 @@
                 const secVal = document.getElementById(`s-${id}`).value.trim();
 
                 if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") {
-                    hasTrueEmptyRow = true;
-                    emptyCardId = id;
-                    break;
+                    hasTrueEmptyRow = true; emptyCardId = id; break;
                 }
             }
 
-            if (!hasTrueEmptyRow) {
-                emptyCardId = addMushroom();
-            }
+            if (!hasTrueEmptyRow) { emptyCardId = addMushroom(); }
 
             if (shouldFocus && emptyCardId) {
                 setTimeout(() => {
@@ -415,7 +372,11 @@
             const card = document.getElementById('card-' + id);
             if (!card) return;
             card.dataset.respawnTime = targetTime;
+            
+            // 如果是在計時中，確保移除已重生隱形標籤
+            card.classList.remove('is-respawned');
             card.classList.add('active');
+            
             if (timers[id]) clearInterval(timers[id]);
             
             const respawnDate = new Date(targetTime);
@@ -427,26 +388,30 @@
 
         function updateCountdown(id, targetTime, timeString) {
             const resDiv = document.getElementById(`res-${id}`);
+            const card = document.getElementById(`card-${id}`);
             const nameStr = document.getElementById(`name-${id}`).value || "蘑菇";
-            if (!resDiv) return;
+            if (!resDiv || !card) return;
             
             const now = Date.now();
             const diff = targetTime - now;
 
             if (diff > 0 && diff <= 60000 && !notifiedItems[id]) {
-                notifiedItems[id] = true; 
-                sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`);
+                notifiedItems[id] = true; sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`);
             }
 
             if (diff <= 0) {
-                resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
                 clearInterval(timers[id]);
+                resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
+                
+                // ★ 重生時：將下方卡片隱形，並重新計算頂部小標籤
+                if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity") {
+                    card.classList.add('is-respawned');
+                    renderRespawnBadges();
+                }
                 return;
             }
 
-            const rM = Math.floor(diff / 60000);
-            const rS = Math.floor((diff % 60000) / 1000);
-            
+            const rM = Math.floor(diff / 60000); const rS = Math.floor((diff % 60000) / 1000);
             if(window.innerWidth > 768) {
                 resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
             } else {
@@ -454,19 +419,86 @@
             }
         }
 
+        // =======================================================
+        // ★ 全新智慧核心：提取並渲染頂部的重生小標籤
+        // =======================================================
+        function renderRespawnBadges() {
+            const badgeContainer = document.getElementById('respawn-badge-container');
+            if (!badgeContainer) return;
+
+            const cards = Array.from(document.querySelectorAll('.card'));
+            const respawnedItems = [];
+
+            cards.forEach(card => {
+                const id = card.id.replace('card-', '');
+                const targetTime = parseFloat(card.dataset.respawnTime);
+                const nameVal = document.getElementById(`name-${id}`).value.trim();
+
+                // 篩選出已經倒數結束、且有名字的重生點位
+                if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") {
+                    respawnedItems.push({ id, name: nameVal, targetTime });
+                }
+            });
+
+            // 按照「重生時間」進行排序 (最剛重生的排在最前面)
+            respawnedItems.sort((a, b) => b.targetTime - a.targetTime);
+
+            // 清空標籤容器並重新繪製
+            badgeContainer.innerHTML = "";
+            if (respawnedItems.length > 0) {
+                const titleLbl = document.createElement('div');
+                titleLbl.className = 'respawn-title-lbl';
+                titleLbl.innerText = "🍄 已重生點位 (點擊可立即重新填寫時間)：";
+                badgeContainer.appendChild(titleLbl);
+
+                respawnedItems.forEach(item => {
+                    const respawnDate = new Date(item.targetTime);
+                    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+
+                    const badge = document.createElement('div');
+                    badge.className = 'badge-item';
+                    badge.innerHTML = `${item.name} <span class="badge-time">${timeString} 重生</span>`;
+                    
+                    // 點擊標籤：啟動原位復活機制
+                    badge.onclick = () => activateRespawnedCard(item.id);
+                    badgeContainer.appendChild(badge);
+                });
+            }
+        }
+
+        // 點擊頂部標籤後的「原位復活」邏輯
+        function activateRespawnedCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (!card) return;
+
+            // 1. 下方卡片解除隱形
+            card.classList.remove('is-respawned');
+            
+            // 2. 刷新頂部小標籤清單 (該標籤會自動消失)
+            renderRespawnBadges();
+
+            // 3. 畫面平滑捲動到這張卡片，並全選「分」輸入框準備打字
+            setTimeout(() => {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const minInput = document.getElementById(`m-${id}`);
+                if (minInput) {
+                    minInput.focus();
+                    setTimeout(() => { minInput.select(); }, 20);
+                }
+            }, 80);
+        }
+
         function sendWebNotification(title, bodyText) {
             try { document.getElementById('alert-sound').play(); } catch(e){}
             if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, { 
-                    body: bodyText,
-                    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png"
-                });
+                new Notification(title, { body: bodyText, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" });
             }
         }
 
         function sortMushrooms() {
             const container = document.getElementById('tracker-container');
             const cards = Array.from(container.getElementsByClassName('card'));
+            // 排序時：倒數中的排在上面，完全未設定的 Infinity 排在最下面
             cards.sort((a, b) => { return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime); });
             cards.forEach(card => container.appendChild(card));
         }
@@ -477,6 +509,7 @@
             const card = document.getElementById(`card-${id}`);
             if (card) card.remove();
             saveState(); 
+            renderRespawnBadges(); // 刪除時同步更新頂部標籤
         }
 
         function saveState() {
@@ -506,16 +539,14 @@
                     let hasEmpty = false;
                     data = data.filter(item => {
                         const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity");
-                        if (isEmpty) {
-                            if (!hasEmpty) { hasEmpty = true; return true; }
-                            return false; 
-                        }
+                        if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; }
                         return true;
                     });
 
                     data.forEach(item => addMushroom(item));
                     sortMushrooms(); 
                     ensureEmptyRow(false); 
+                    renderRespawnBadges(); // 讀取完畢後渲染頂部標籤
                     saveState(); 
                     return;
                 }
