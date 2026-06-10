@@ -32,25 +32,47 @@
         .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 10px; font-size: 0.95rem; }
 
         /* =======================================================
-           ★ 全新設計：頂部智慧重生標籤區 (Respawn Badges Area)
+           ★ 核心優化：重生標籤外殼 (加入限高捲軸與手風琴收合功能)
            ======================================================= */
-        #respawn-badge-container {
-            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; 
-            padding: 8px; background: rgba(220, 225, 230, 0.4); border-radius: 8px;
+        #respawn-area-wrapper {
+            background: rgba(220, 225, 230, 0.5); border-radius: 8px;
+            padding: 10px; margin-bottom: 15px; border: 1px solid #dcdde1;
         }
-        #respawn-badge-container:empty { display: none; } /* 沒蘑菇重生時完全隱形 */
-        
-        .respawn-title-lbl { width: 100%; font-size: 0.85rem; color: #7f8c8d; font-weight: bold; margin-bottom: 2px; }
+        #respawn-area-wrapper:empty { display: none; } /* 沒蘑菇重生時整個區塊隱形 */
+
+        /* 標籤區的標題列：橫排並放置收合按鈕 */
+        .respawn-header-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 4px; font-size: 0.88rem; color: #7f8c8d; font-weight: bold;
+        }
+        .btn-toggle-respawn {
+            background: #7f8c8d; color: white; border: none; padding: 2px 8px;
+            border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;
+        }
+        .btn-toggle-respawn:hover { background: #636e72; }
+
+        /* 實際包裹小標籤的容器：設定最高限制，超出則在內部跑滑動軸 */
+        #respawn-badge-container {
+            display: flex; flex-wrap: wrap; gap: 8px; 
+            max-height: 110px; /* 手機版約兩行至三行標籤的高度天花板 */
+            overflow-y: auto;  /* 超出自動在內部產生垂直捲軸，絕不擠壓外面版面 */
+            padding-right: 4px; 
+            transition: max-height 0.25s ease-out; /* 增加平滑收合動畫 */
+        }
+        /* 當被標記為收合狀態時，高度歸零並隱藏內容 */
+        #respawn-badge-container.collapsed {
+            max-height: 0px !important; overflow: hidden; padding: 0; margin: 0;
+        }
 
         .badge-item {
             background-color: #ff7675; color: white; padding: 8px 12px; border-radius: 6px;
             font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 2px 5px rgba(255, 118, 117, 0.3); transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); transition: transform 0.1s;
         }
-        .badge-item:hover { background-color: #e84393; transform: scale(1.03); }
-        .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 6px; border-radius: 4px; }
+        .badge-item:hover { background-color: #e84393; transform: scale(1.02); }
+        .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 5px; border-radius: 4px; }
 
-        /* 卡片主體排版 */
+        /* 倒數卡片排版 */
         .card {
             background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px;
@@ -59,9 +81,7 @@
             gap: 15px; overflow: hidden; box-sizing: border-box;
         }
         .card.active { border-left-color: #2ecc71; background-color: rgba(245, 255, 245, 0.95); }
-        
-        /* 當蘑菇處於「已重生」狀態時，下方卡片進入隱形編輯模式，等待從小標籤點擊喚醒 */
-        .card.is-respawned { display: none !important; }
+        .card.is-respawned { display: none !important; } /* 已重生的卡片在清單中隱形 */
 
         .input-item-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 180px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); }
@@ -109,7 +129,7 @@
         <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
     </div>
 
-    <div id="respawn-badge-container"></div>
+    <div id="respawn-area-wrapper"></div>
     
     <div id="tracker-container"></div>
 
@@ -138,6 +158,7 @@
         let timers = {};
         let notifiedItems = {}; 
         let html5QrcodeScanner = null;
+        let isRespawnSectionCollapsed = false; // 紀錄使用者是否手動收合了抽屜
 
         window.onload = function() { 
             requestNotificationPermission();
@@ -219,6 +240,9 @@
                 } catch(e) { alert("❌ 網址解析失敗。"); }
             } else { loadState(); }
         }
+
+        document.getElementById('import-backdrop').onclick = closeImportModal;
+        document.getElementById('qr-backdrop').onclick = closeQRModal;
 
         function showShareQR() {
             const packed = getPackedData();
@@ -307,7 +331,7 @@
 
         window.addEventListener('resize', () => {
             document.querySelectorAll('.card').forEach(card => { updateButtonText(card.id.replace('card-', '')); });
-            renderRespawnBadges(); // 縮放時也重新渲染標籤
+            renderRespawnBadges(); 
         });
 
         function attachEvents(id) {
@@ -373,7 +397,6 @@
             if (!card) return;
             card.dataset.respawnTime = targetTime;
             
-            // 如果是在計時中，確保移除已重生隱形標籤
             card.classList.remove('is-respawned');
             card.classList.add('active');
             
@@ -403,7 +426,6 @@
                 clearInterval(timers[id]);
                 resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
                 
-                // ★ 重生時：將下方卡片隱形，並重新計算頂部小標籤
                 if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity") {
                     card.classList.add('is-respawned');
                     renderRespawnBadges();
@@ -420,11 +442,11 @@
         }
 
         // =======================================================
-        // ★ 全新智慧核心：提取並渲染頂部的重生小標籤
+        // ★ 核心修改：渲染功能加上捲軸限制、收合按鈕控制
         // =======================================================
         function renderRespawnBadges() {
-            const badgeContainer = document.getElementById('respawn-badge-container');
-            if (!badgeContainer) return;
+            const wrapper = document.getElementById('respawn-area-wrapper');
+            if (!wrapper) return;
 
             const cards = Array.from(document.querySelectorAll('.card'));
             const respawnedItems = [];
@@ -434,50 +456,55 @@
                 const targetTime = parseFloat(card.dataset.respawnTime);
                 const nameVal = document.getElementById(`name-${id}`).value.trim();
 
-                // 篩選出已經倒數結束、且有名字的重生點位
                 if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") {
                     respawnedItems.push({ id, name: nameVal, targetTime });
                 }
             });
 
-            // 按照「重生時間」進行排序 (最剛重生的排在最前面)
+            // 按照重生時間排序 (最新重生的在前面)
             respawnedItems.sort((a, b) => b.targetTime - a.targetTime);
 
-            // 清空標籤容器並重新繪製
-            badgeContainer.innerHTML = "";
-            if (respawnedItems.length > 0) {
-                const titleLbl = document.createElement('div');
-                titleLbl.className = 'respawn-title-lbl';
-                titleLbl.innerText = "🍄 已重生點位 (點擊可立即重新填寫時間)：";
-                badgeContainer.appendChild(titleLbl);
-
-                respawnedItems.forEach(item => {
-                    const respawnDate = new Date(item.targetTime);
-                    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-
-                    const badge = document.createElement('div');
-                    badge.className = 'badge-item';
-                    badge.innerHTML = `${item.name} <span class="badge-time">${timeString} 重生</span>`;
-                    
-                    // 點擊標籤：啟動原位復活機制
-                    badge.onclick = () => activateRespawnedCard(item.id);
-                    badgeContainer.appendChild(badge);
-                });
+            if (respawnedItems.length === 0) {
+                wrapper.innerHTML = "";
+                return;
             }
+
+            // 繪製外殼、標題列、以及收合按鈕
+            const toggleText = isRespawnSectionCollapsed ? `展開 (${respawnedItems.length}) ▾` : "隱藏收合 ▴";
+            wrapper.innerHTML = `
+                <div class="respawn-header-row">
+                    <span>🍄 已重生點位 (點擊即可重新倒數)：</span>
+                    <button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button>
+                </div>
+                <div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>
+            `;
+
+            const badgeContainer = document.getElementById('respawn-badge-container');
+            respawnedItems.forEach(item => {
+                const respawnDate = new Date(item.targetTime);
+                const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+
+                const badge = document.createElement('div');
+                badge.className = 'badge-item';
+                badge.innerHTML = `${item.name} <span class="badge-time">${timeString}</span>`;
+                badge.onclick = () => activateRespawnedCard(item.id);
+                badgeContainer.appendChild(badge);
+            });
         }
 
-        // 點擊頂部標籤後的「原位復活」邏輯
+        // 切換收合/展開按鈕事件
+        function toggleRespawnContainer() {
+            isRespawnSectionCollapsed = !isRespawnSectionCollapsed;
+            renderRespawnBadges(); // 重新渲染以更新按鈕文字和類別樣式
+        }
+
         function activateRespawnedCard(id) {
             const card = document.getElementById(`card-${id}`);
             if (!card) return;
 
-            // 1. 下方卡片解除隱形
             card.classList.remove('is-respawned');
-            
-            // 2. 刷新頂部小標籤清單 (該標籤會自動消失)
             renderRespawnBadges();
 
-            // 3. 畫面平滑捲動到這張卡片，並全選「分」輸入框準備打字
             setTimeout(() => {
                 card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const minInput = document.getElementById(`m-${id}`);
@@ -498,7 +525,6 @@
         function sortMushrooms() {
             const container = document.getElementById('tracker-container');
             const cards = Array.from(container.getElementsByClassName('card'));
-            // 排序時：倒數中的排在上面，完全未設定的 Infinity 排在最下面
             cards.sort((a, b) => { return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime); });
             cards.forEach(card => container.appendChild(card));
         }
@@ -509,7 +535,7 @@
             const card = document.getElementById(`card-${id}`);
             if (card) card.remove();
             saveState(); 
-            renderRespawnBadges(); // 刪除時同步更新頂部標籤
+            renderRespawnBadges(); 
         }
 
         function saveState() {
@@ -546,7 +572,7 @@
                     data.forEach(item => addMushroom(item));
                     sortMushrooms(); 
                     ensureEmptyRow(false); 
-                    renderRespawnBadges(); // 讀取完畢後渲染頂部標籤
+                    renderRespawnBadges(); 
                     saveState(); 
                     return;
                 }
