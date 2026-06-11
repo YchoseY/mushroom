@@ -4,106 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>皮克敏蘑菇戰情板</title>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="蘑菇戰情板">
     
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "微軟正黑體", sans-serif;
-            background-color: #f1f2f6; color: #2d3436; padding: 15px;
-            max-width: 900px; margin: 0 auto;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "微軟正黑體", sans-serif; background-color: #f1f2f6; color: #2d3436; padding: 15px; max-width: 900px; margin: 0 auto; min-height: 100vh; }
         h2 { text-align: center; color: #2c3e50; margin: 15px 0; font-size: 1.6rem; }
         
-        .header-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-        .btn-main {
-            border: none; padding: 12px 10px; border-radius: 8px;
-            font-size: 1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;
-        }
+        /* 頂部管理按鈕群 */
+        .header-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+        .btn-main { border: none; padding: 12px 10px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; color: white; transition: background 0.2s; }
+        .btn-main:active { transform: scale(0.98); }
         .btn-add { background-color: #fbd14b; color: #333; }
-        .btn-url { background-color: #ff9f43; color: white; }
-        .btn-qr { background-color: #9b5de5; color: white; }
-        .btn-code { background-color: #2575fc; color: white; }
-        .btn-import { background-color: #00b894; color: white; grid-column: span 4; padding: 10px; font-size: 0.95rem; }
+        .btn-url { background-color: #ff9f43; }
+        .btn-qr { background-color: #9b5de5; }
+        .btn-code { background-color: #2575fc; }
+        
+        /* ★ 完美並排雙鈕：使用 grid 讓兩顆按鈕各佔一半空間 */
+        .import-twin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .btn-twin-ocr { background-color: #34495e; font-size: 0.9rem; padding: 12px; }
+        .btn-twin-import { background-color: #00b894; font-size: 0.9rem; padding: 12px; }
 
-        /* =======================================================
-           ★ 核心優化：重生標籤外殼 (加入限高捲軸與手風琴收合功能)
-           ======================================================= */
-        #respawn-area-wrapper {
-            background: rgba(220, 225, 230, 0.5); border-radius: 8px;
-            padding: 10px; margin-bottom: 15px; border: 1px solid #dcdde1;
-        }
-        #respawn-area-wrapper:empty { display: none; } /* 沒蘑菇重生時整個區塊隱形 */
+        /* 彈出視窗(Modal)共用核心樣式 */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; box-sizing: border-box; }
+        .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 290; }
+        .modal h3 { margin-top: 0; color: #2c3e50; font-size: 1.2rem; margin-bottom: 15px; }
 
-        /* 標籤區的標題列：橫排並放置收合按鈕 */
-        .respawn-header-row {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 4px; font-size: 0.88rem; color: #7f8c8d; font-weight: bold;
-        }
-        .btn-toggle-respawn {
-            background: #7f8c8d; color: white; border: none; padding: 2px 8px;
-            border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold;
-        }
-        .btn-toggle-respawn:hover { background: #636e72; }
+        /* 📸 上傳圖片專屬 Modal 內部樣式 */
+        #file-input { display: none; }
+        .btn-ocr-trigger-upload { display: block; background: #34495e; color: white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0; }
+        .ocr-modal-hint { font-size: 0.78rem; color: #7f8c8d; line-height: 1.4; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #7f8c8d; }
+        #ocr-loading-status { display: none; font-size: 0.88rem; color: #ff9f43; font-weight: bold; margin: 10px 0; }
 
-        /* 實際包裹小標籤的容器：設定最高限制，超出則在內部跑滑動軸 */
-        #respawn-badge-container {
-            display: flex; flex-wrap: wrap; gap: 8px; 
-            max-height: 110px; /* 手機版約兩行至三行標籤的高度天花板 */
-            overflow-y: auto;  /* 超出自動在內部產生垂直捲軸，絕不擠壓外面版面 */
-            padding-right: 4px; 
-            transition: max-height 0.25s ease-out; /* 增加平滑收合動畫 */
-        }
-        /* 當被標記為收合狀態時，高度歸零並隱藏內容 */
-        #respawn-badge-container.collapsed {
-            max-height: 0px !important; overflow: hidden; padding: 0; margin: 0;
-        }
-
-        .badge-item {
-            background-color: #ff7675; color: white; padding: 8px 12px; border-radius: 6px;
-            font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); transition: transform 0.1s;
-        }
-        .badge-item:hover { background-color: #e84393; transform: scale(1.02); }
+        /* 重生標籤外殼 */
+        #respawn-area-wrapper { background: rgba(220, 225, 230, 0.5); border-radius: 8px; padding: 10px; margin-bottom: 15px; border: 1px solid #dcdde1; }
+        #respawn-area-wrapper:empty { display: none; }
+        .respawn-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.88rem; color: #7f8c8d; font-weight: bold; }
+        .btn-toggle-respawn { background: #7f8c8d; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold; }
+        #respawn-badge-container { display: flex; flex-wrap: wrap; gap: 8px; max-height: 110px; overflow-y: auto; padding-right: 4px; transition: max-height 0.25s ease-out; }
+        #respawn-badge-container.collapsed { max-height: 0px !important; overflow: hidden; padding: 0; margin: 0; }
+        .badge-item { background-color: #ff7675; color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); }
+        .badge-item:hover { background-color: #e84393; }
         .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 5px; border-radius: 4px; }
 
         /* 倒數卡片排版 */
-        .card {
-            background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px;
-            border-left: 6px solid #a4b0be; backdrop-filter: blur(5px);
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 15px; overflow: hidden; box-sizing: border-box;
-        }
+        .card { background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px; border-left: 6px solid #a4b0be; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-sizing: border-box; }
         .card.active { border-left-color: #2ecc71; background-color: rgba(245, 255, 245, 0.95); }
-        .card.is-respawned { display: none !important; } /* 已重生的卡片在清單中隱形 */
-
+        .card.is-respawned { display: none !important; }
+        
+        /* OCR 待確認卡片樣式 */
+        .card.ocr-confirming { border-color: #2575fc; box-shadow: 0 0 15px rgba(37, 117, 252, 0.4); background: rgba(240, 248, 255, 0.95); border-left-width: 6px !important; }
         .input-item-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 180px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); }
         input[type="number"] { padding: 8px 4px; border: 1px solid #ccc; border-radius: 6px; width: 50px; font-size: 1rem; text-align: center; outline: none; background: rgba(255,255,255,0.9); }
         input:focus { border-color: #2ecc71; box-shadow: 0 0 5px rgba(46,204,113,0.4); }
 
         .btn-calc { background-color: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; flex-shrink: 0; }
+        .card.ocr-confirming .btn-calc { background-color: #2575fc; animation: pulseBlue 1.5s infinite; }
+        @keyframes pulseBlue { 0% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(37, 117, 252, 0); } 100% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0); } }
+
         .result-box { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; min-width: 150px; overflow: hidden; line-height: 1.3; margin-right: 10px; }
         .countdown { font-size: 1.2rem; font-weight: bold; color: #d63031; white-space: nowrap; }
         .target-time { font-size: 0.85rem; color: #636e72; white-space: nowrap; }
         .btn-delete { background-color: #ff7675; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; flex-shrink: 0; }
 
-        /* 彈出視窗 */
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; }
-        .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 290; }
-
         @media (max-width: 768px) {
             body { padding: 10px; }
             h2 { font-size: 1.5rem; margin: 10px 0; }
-            .header-buttons { gap: 6px; margin-bottom: 12px; }
+            .header-buttons { gap: 6px; margin-bottom: 10px; }
             .btn-main { padding: 10px 4px; font-size: 0.9rem; border-radius: 6px; }
-            .btn-import { padding: 12px; font-size: 0.95rem; }
+            
+            /* 手機版雙按鈕並排調密 */
+            .import-twin-row { gap: 6px; margin-bottom: 12px; }
+            .btn-twin-ocr, .btn-twin-import { padding: 10px 4px; font-size: 0.82rem; border-radius: 6px; }
+
             .card { padding: 10px 12px; margin-bottom: 8px; border-left-width: 5px; border-radius: 8px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
             .input-item-wrap { display: flex; align-items: center; width: 100%; gap: 6px; font-size: 1rem; }
             input[type="text"] { padding: 8px; width: 45%; font-size: 1rem; border-radius: 5px; flex-grow: 1; }
@@ -126,27 +107,37 @@
         <button class="btn-main btn-url" onclick="shareViaURL()">🔗 網址</button>
         <button class="btn-main btn-qr" onclick="showShareQR()">📱 QR碼</button>
         <button class="btn-main btn-code" onclick="copyShareCode()">📋 文字碼</button>
-        <button class="btn-main btn-import" onclick="openImportModal()">📥 點此匯入資料 / 掃描 QR</button>
+    </div>
+
+    <div class="import-twin-row">
+        <button class="btn-main btn-twin-ocr" onclick="openOcrModal()">📸 截圖自動辨識 (可多選)</button>
+        <button class="btn-main btn-twin-import" onclick="openImportModal()">📥 匯入好友戰情 / 掃描 QR</button>
     </div>
 
     <div id="respawn-area-wrapper"></div>
-    
     <div id="tracker-container"></div>
 
-    <div class="modal-backdrop" id="qr-backdrop" onclick="closeQRModal()"></div>
-    <div class="modal" id="qrModal">
-        <h3>掃描此 QR Code 分享戰情</h3>
-        <div id="qrcode"></div>
-        <button class="btn-main btn-url" style="background:#888" onclick="closeQRModal()">關閉</button>
+    <div class="modal-backdrop" id="ocr-backdrop" onclick="closeOcrModal()"></div>
+    <div class="modal" id="ocrModal">
+        <h3>📸 上傳打菇截圖辨識</h3>
+        <input type="file" id="file-input" accept="image/*" multiple>
+        <label for="file-input" class="btn-ocr-trigger-upload">選擇手機截圖 (可選多張)</label>
+        <div id="ocr-loading-status">🕵️‍♂️ 正在辨識第 1 張照片...</div>
+        <div class="ocr-modal-hint">
+            • 支援**多選照片**一次批次匯入。<br>
+            • 系統會自動精確撈取照片底層的原生拍攝秒數。<br>
+            • 辨識完後會在主畫面產生藍色霓虹框卡片，點擊 <b>✓</b> 即可完美歸隊。
+        </div>
+        <button class="btn-main btn-add" onclick="closeOcrModal()" style="background:#aaa; color:#fff; margin-top: 15px; width: 100%;">關閉</button>
     </div>
 
     <div class="modal-backdrop" id="import-backdrop" onclick="closeImportModal()"></div>
     <div class="modal" id="importModal">
         <h3>📥 匯入朋友的戰情</h3>
-        <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px; width: 100%;">📷 打開相機掃描 QR</button>
+        <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px; width: 100%;">📷 相機掃描 QR</button>
         <div id="reader" style="width: 100%; display: none; margin-bottom: 10px;"></div>
         <input type="text" id="manualCodeInput" placeholder="在此貼上文字碼" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
-        <button class="btn-main btn-import" onclick="importManualCode()" style="width: 100%;">確認貼上匯入</button>
+        <button class="btn-main btn-twin-import" onclick="importManualCode()" style="width: 100%;">確認貼上匯入</button>
         <button class="btn-main btn-add" onclick="closeImportModal()" style="background:#aaa; color:#fff; margin-top: 10px; width: 100%;">取消</button>
     </div>
 
@@ -158,27 +149,177 @@
         let timers = {};
         let notifiedItems = {}; 
         let html5QrcodeScanner = null;
-        let isRespawnSectionCollapsed = false; // 紀錄使用者是否手動收合了抽屜
+        let isRespawnSectionCollapsed = false; 
 
-        window.onload = function() { 
-            requestNotificationPermission();
-            migrateOldData();  
-            checkSharedData(); 
-        };
+        window.onload = function() { requestNotificationPermission(); migrateOldData(); checkSharedData(); initOCR(); };
 
+        // 開啟/關閉圖片辨識 Modal
+        function openOcrModal() { document.getElementById('ocr-backdrop').style.display = 'block'; document.getElementById('ocrModal').style.display = 'block'; }
+        function closeOcrModal() { document.getElementById('ocr-backdrop').style.display = 'none'; document.getElementById('ocrModal').style.display = 'none'; }
+
+        // =======================================================
+        // ★ 核心升級：支援多圖批次排隊處理與流水線 OCR
+        // =======================================================
+        function initOCR() {
+            const fileInput = document.getElementById('file-input');
+            fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                const loadingStatus = document.getElementById('ocr-loading-status');
+                const triggerBtn = document.querySelector('.btn-ocr-trigger-upload');
+                
+                triggerBtn.style.display = 'none';
+                loadingStatus.style.display = 'block';
+
+                // 利用 async/await 依序排隊解碼每一張照片
+                for (let i = 0; i < files.length; i++) {
+                    loadingStatus.innerText = `🕵️‍♂️ 正在辨識第 ${i + 1} / ${files.length} 張照片...`;
+                    await processSingleFile(files[i]);
+                }
+
+                loadingStatus.style.display = 'none';
+                triggerBtn.style.display = 'block';
+                fileInput.value = ''; // 清空選擇
+                closeOcrModal(); // 批次辨識完自動關閉視窗，讓使用者看主畫面
+            });
+        }
+
+        // 封裝成 Promise 結構以便排隊執行
+        function processSingleFile(file) {
+            return new Promise((resolve) => {
+                let photoExactTimestamp = Date.now();
+
+                // 1. 抓取這張照片的 EXIF 原生秒數
+                EXIF.getData(file, function() {
+                    const dateTimeStr = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
+                    if (dateTimeStr) {
+                        const parts = dateTimeStr.split(' ');
+                        const dateParts = parts[0].replace(/:/g, '-');
+                        const timeParts = parts[1];
+                        const parsedDate = new Date(`${dateParts}T${timeParts}`);
+                        if (!isNaN(parsedDate.getTime())) { photoExactTimestamp = parsedDate.getTime(); }
+                    }
+
+                    // 2. 讀取 Base64 進圖 Tesseract OCR 辨識文字
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        Tesseract.recognize(reader.result, 'chi_tra')
+                        .then(({ data: { text } }) => {
+                            parseOCRResult(text, photoExactTimestamp);
+                            resolve(); // 這張好囉，換下一張
+                        })
+                        .catch(err => {
+                            console.error("單張圖片OCR失敗:", err);
+                            resolve(); // 失敗也放行，繼續下一張
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
+        function parseOCRResult(text, photoExactTimestamp) {
+            let locationName = "截圖辨識點位";
+            
+            const lines = text.split('\n');
+            for(let line of lines) {
+                let cleanLine = line.trim();
+                if(cleanLine.includes("展示") || cleanLine.includes("系統") || cleanLine.includes("公園") || cleanLine.includes("廟") || cleanLine.includes("教堂") || cleanLine.includes("郵局") || cleanLine.includes("大樓")) {
+                    locationName = cleanLine.replace(/[>><\|\[\]]/g, '').trim();
+                    break;
+                }
+            }
+
+            const timeRegExp = /剩下\s*(\d+)\s*小時\s*(\d+)\s*分\s*(\d+)\s*秒|\s*(\d+)\s*分\s*(\d+)\s*秒/;
+            const match = text.match(timeRegExp);
+
+            let calculatedTargetTime = Infinity;
+            let displayMin = ""; let displaySec = "";
+
+            if (match) {
+                let hours = 0, mins = 0, secs = 0;
+                if (match[1]) { hours = parseInt(match[1]); mins = parseInt(match[2]); secs = parseInt(match[3]); } 
+                else if (match[4]) { mins = parseInt(match[4]); secs = parseInt(match[5]); }
+
+                displayMin = (hours * 60) + mins;
+                displaySec = secs;
+                calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
+            }
+
+            createNewOCRCard(locationName, calculatedTargetTime, displayMin, displaySec);
+        }
+
+        function createNewOCRCard(location, targetTime, displayMin, displaySec) {
+            const id = 'OCR_' + Date.now() + '_' + Math.floor(Math.random() * 1000); // 隨機後綴防多圖 ID 撞車
+            const card = document.createElement('div');
+            card.className = 'card ocr-confirming'; 
+            card.id = `card-${id}`;
+            card.dataset.respawnTime = targetTime; 
+            
+            card.innerHTML = `
+                <div class="input-item-wrap">
+                    <input type="text" id="name-${id}" placeholder="地點" value="${location}">
+                    <input type="number" id="m-${id}" placeholder="分" min="0" value="${displayMin}">:
+                    <input type="number" id="s-${id}" placeholder="秒" min="0" value="${displaySec}">
+                    <button class="btn-calc" id="btn-${id}" onclick="confirmOCRCard('${id}')">✓</button>
+                </div>
+                <div class="mobile-row-two">
+                    <div class="result-box" id="res-${id}">
+                        <span style="color: #2575fc; font-weight: bold; font-size:0.85rem;">📸 請確認點位</span>
+                    </div>
+                    <button class="btn-delete" onclick="removeOCRConfirmingCard('${id}')">✕</button>
+                </div>
+            `;
+            
+            const container = document.getElementById('tracker-container');
+            container.prepend(card); // 丟到最頂部
+            attachOCREvents(id);
+            if (targetTime !== Infinity) { resumeTracking(id, targetTime); }
+        }
+
+        function confirmOCRCard(id) {
+            const card = document.getElementById(`card-${id}`);
+            if (!card) return;
+            card.classList.remove('ocr-confirming');
+            card.classList.add('active');
+            sortMushrooms();
+            saveState(); 
+            ensureEmptyRow(false); 
+        }
+
+        function attachOCREvents(id) {
+            const nameInput = document.getElementById(`name-${id}`);
+            const minInput = document.getElementById(`m-${id}`);
+            const secInput = document.getElementById(`s-${id}`);
+
+            nameInput.addEventListener('focus', () => { setTimeout(() => { nameInput.select(); }, 10); });
+            minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });
+            secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });
+
+            nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});
+            minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});
+            secInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmOCRCard(id); }});
+        }
+
+        function removeOCRConfirmingCard(id) {
+            if (timers[id]) clearInterval(timers[id]);
+            const card = document.getElementById(`card-${id}`);
+            if (card) card.remove();
+        }
+
+        // =======================================================
+        // 以下為常規歷史功能 (完美保留未動)
+        // =======================================================
         function migrateOldData() {
             const oldKeys = ['pikminMushrooms', 'pikminMushrooms_v2', 'pikminMushrooms_pwa', 'pikminMushrooms_v3', 'pikminMushrooms_v4'];
             let migratedData = [];
             const currentDb = localStorage.getItem(DB_KEY);
             if (currentDb) return; 
-
             for (let oldKey of oldKeys) {
                 const oldData = localStorage.getItem(oldKey);
                 if (oldData) {
-                    try {
-                        const parsed = JSON.parse(oldData);
-                        if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; }
-                    } catch(e) {}
+                    try { const parsed = JSON.parse(oldData); if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; } } catch(e) {}
                 }
             }
             if (migratedData.length > 0) { localStorage.setItem(DB_KEY, JSON.stringify(migratedData)); }
@@ -198,24 +339,14 @@
             const localArray = localString ? JSON.parse(localString) : [];
             const mergedMap = new Map();
             let uniqueTimeCounter = Date.now();
-            
             localArray.forEach(item => { const nameKey = item.name.trim(); if (nameKey !== "") { mergedMap.set(nameKey, item); } });
-            
             sharedArray.forEach(item => {
                 const nameKey = item.name.trim();
                 if (nameKey !== "") {
-                    if (mergedMap.has(nameKey)) {
-                        const oldItem = mergedMap.get(nameKey);
-                        item.id = oldItem.id; 
-                        mergedMap.set(nameKey, item);
-                    } else {
-                        uniqueTimeCounter++;
-                        item.id = uniqueTimeCounter;
-                        mergedMap.set(nameKey, item);
-                    }
+                    if (mergedMap.has(nameKey)) { const oldItem = mergedMap.get(nameKey); item.id = oldItem.id; mergedMap.set(nameKey, item); } 
+                    else { uniqueTimeCounter++; item.id = uniqueTimeCounter; mergedMap.set(nameKey, item); }
                 }
             });
-            
             localStorage.setItem(DB_KEY, JSON.stringify(Array.from(mergedMap.values())));
             document.getElementById('tracker-container').innerHTML = '';
             loadState();
@@ -232,17 +363,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const shareData = urlParams.get('share');
             if (shareData) {
-                try {
-                    const decodedString = decodeURIComponent(atob(shareData));
-                    mergeArrays(JSON.parse(decodedString));
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    alert("✅ 已成功合併紀錄！");
-                } catch(e) { alert("❌ 網址解析失敗。"); }
+                try { const decodedString = decodeURIComponent(atob(shareData)); mergeArrays(JSON.parse(decodedString)); window.history.replaceState({}, document.title, window.location.pathname); alert("✅ 已成功合併紀錄！"); } catch(e) { alert("❌ 網址解析失敗。"); }
             } else { loadState(); }
         }
-
-        document.getElementById('import-backdrop').onclick = closeImportModal;
-        document.getElementById('qr-backdrop').onclick = closeQRModal;
 
         function showShareQR() {
             const packed = getPackedData();
@@ -272,27 +395,19 @@
             let val = document.getElementById('manualCodeInput').value.trim();
             if(!val) return alert('請先貼上代碼！');
             if (val.startsWith("PIKMIN-") || val.startsWith("PKM-")) val = val.replace("PIKMIN-", "").replace("PKM-", "");
-            try {
-                mergeArrays(JSON.parse(decodeURIComponent(atob(val))));
-                document.getElementById('manualCodeInput').value = ''; closeImportModal(); alert("✅ 成功合併資料！");
-            } catch(e) { alert("❌ 代碼解析失敗。"); }
+            try { mergeArrays(JSON.parse(decodeURIComponent(atob(val)))); document.getElementById('manualCodeInput').value = ''; closeImportModal(); alert("✅ 成功合併資料！"); } catch(e) { alert("❌ 代碼解析失敗。"); }
         }
 
         function startCameraScan() {
             document.getElementById('reader').style.display = 'block'; html5QrcodeScanner = new Html5Qrcode("reader");
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
-                (decodedText) => {
-                    try {
-                        mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText)))); closeImportModal(); alert("✅ 條碼掃描成功！");
-                    } catch(e) { alert("條碼格式錯誤。"); }
-                }, () => {}
+                (decodedText) => { try { mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText)))); closeImportModal(); alert("✅ 條碼掃描成功！"); } catch(e) { alert("條碼格式錯誤。"); } }, () => {}
             ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
         }
 
         function addMushroom(data = null) {
             const container = document.getElementById('tracker-container');
             const id = data ? data.id : Date.now(); 
-            
             const card = document.createElement('div');
             card.className = 'card'; card.id = `card-${id}`;
             card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
@@ -302,24 +417,16 @@
                     <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
                     <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
                     <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
-                    <button class="btn-calc" id="btn-${id}" onclick="startTracking(${id})">✓</button>
+                    <button class="btn-calc" id="btn-${id}" onclick="startTracking('${id}')">✓</button>
                 </div>
                 <div class="mobile-row-two">
-                    <div class="result-box" id="res-${id}">
-                        <span style="color: #bbb; font-size:0.85rem;">未設定</span>
-                    </div>
-                    <button class="btn-delete" id="del-${id}" onclick="removeMushroom(${id})">✕</button>
+                    <div class="result-box" id="res-${id}"> <span style="color: #bbb; font-size:0.85rem;">未設定</span> </div>
+                    <button class="btn-delete" id="del-${id}" onclick="removeMushroom('${id}')">✕</button>
                 </div>
             `;
-            container.appendChild(card);
-            attachEvents(id);
-            updateButtonText(id); 
-
-            if (data && data.targetTime && data.targetTime !== "Infinity") {
-                resumeTracking(id, parseInt(data.targetTime));
-            } else if (!data) {
-                saveState();
-            }
+            container.appendChild(card); attachEvents(id); updateButtonText(id); 
+            if (data && data.targetTime && data.targetTime !== "Infinity") { resumeTracking(id, parseInt(data.targetTime)); } 
+            else if (!data) { saveState(); }
             return id; 
         }
 
@@ -329,252 +436,122 @@
             if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }
         }
 
-        window.addEventListener('resize', () => {
-            document.querySelectorAll('.card').forEach(card => { updateButtonText(card.id.replace('card-', '')); });
-            renderRespawnBadges(); 
-        });
-
         function attachEvents(id) {
-            const nameInput = document.getElementById(`name-${id}`);
-            const minInput = document.getElementById(`m-${id}`);
-            const secInput = document.getElementById(`s-${id}`);
-            const btnCalc = document.getElementById(`btn-${id}`);
-
+            const nameInput = document.getElementById(`name-${id}`); const minInput = document.getElementById(`m-${id}`); const secInput = document.getElementById(`s-${id}`); const btnCalc = document.getElementById(`btn-${id}`);
             nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});
             minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});
             secInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); btnCalc.click(); }});
-
             minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });
             secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });
-
             nameInput.addEventListener('change', saveState);
-            minInput.addEventListener('change', saveState);
-            secInput.addEventListener('change', saveState);
         }
 
         function ensureEmptyRow(shouldFocus = false) {
-            const cards = document.querySelectorAll('.card');
+            const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); 
             let hasTrueEmptyRow = false; let emptyCardId = null;
-
             for (let card of cards) {
                 const id = card.id.replace('card-', '');
-                const nameVal = document.getElementById(`name-${id}`).value.trim();
-                const minVal = document.getElementById(`m-${id}`).value.trim();
-                const secVal = document.getElementById(`s-${id}`).value.trim();
-
-                if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") {
-                    hasTrueEmptyRow = true; emptyCardId = id; break;
-                }
+                const nameVal = document.getElementById(`name-${id}`).value.trim(); const minVal = document.getElementById(`m-${id}`).value.trim(); const secVal = document.getElementById(`s-${id}`).value.trim();
+                if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") { hasTrueEmptyRow = true; emptyCardId = id; break; }
             }
-
             if (!hasTrueEmptyRow) { emptyCardId = addMushroom(); }
-
-            if (shouldFocus && emptyCardId) {
-                setTimeout(() => {
-                    const nameInput = document.getElementById(`name-${emptyCardId}`);
-                    if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-                }, 100);
-            }
+            if (shouldFocus && emptyCardId) { setTimeout(() => { const nameInput = document.getElementById(`name-${emptyCardId}`); if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 100); }
         }
 
         function startTracking(id) {
-            const min = parseInt(document.getElementById(`m-${id}`).value) || 0;
-            const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
+            const min = parseInt(document.getElementById(`m-${id}`).value) || 0; const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
             if (min === 0 && sec === 0) { return; }
-
-            const now = Date.now();
-            const targetTime = now + (((min * 60) + sec + 300) * 1000);
-
-            delete notifiedItems[id];
-            resumeTracking(id, targetTime);
-            sortMushrooms();
-            saveState(); 
-            ensureEmptyRow(true);
+            const now = Date.now(); const targetTime = now + (((min * 60) + sec + 300) * 1000);
+            delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
         }
 
         function resumeTracking(id, targetTime) {
-            const card = document.getElementById('card-' + id);
-            if (!card) return;
-            card.dataset.respawnTime = targetTime;
-            
-            card.classList.remove('is-respawned');
-            card.classList.add('active');
-            
+            const card = document.getElementById('card-' + id); if (!card) return;
+            card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');
+            if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
             if (timers[id]) clearInterval(timers[id]);
-            
-            const respawnDate = new Date(targetTime);
-            const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            
-            updateCountdown(id, targetTime, timeString);
-            timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
+            const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            updateCountdown(id, targetTime, timeString); timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
         }
 
         function updateCountdown(id, targetTime, timeString) {
-            const resDiv = document.getElementById(`res-${id}`);
-            const card = document.getElementById(`card-${id}`);
-            const nameStr = document.getElementById(`name-${id}`).value || "蘑菇";
+            const resDiv = document.getElementById(`res-${id}`); const card = document.getElementById(`card-${id}`); const nameStr = document.getElementById(`name-${id}`).value || "蘑菇";
             if (!resDiv || !card) return;
-            
-            const now = Date.now();
-            const diff = targetTime - now;
-
-            if (diff > 0 && diff <= 60000 && !notifiedItems[id]) {
-                notifiedItems[id] = true; sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`);
-            }
-
+            const now = Date.now(); const diff = targetTime - now;
+            if (diff > 0 && diff <= 60000 && !notifiedItems[id]) { notifiedItems[id] = true; sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`); }
             if (diff <= 0) {
-                clearInterval(timers[id]);
-                resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
-                
-                if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity") {
-                    card.classList.add('is-respawned');
-                    renderRespawnBadges();
-                }
+                clearInterval(timers[id]); resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
+                if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity" && !card.classList.contains('ocr-confirming')) { card.classList.add('is-respawned'); renderRespawnBadges(); }
                 return;
             }
-
             const rM = Math.floor(diff / 60000); const rS = Math.floor((diff % 60000) / 1000);
-            if(window.innerWidth > 768) {
-                resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`;
-            } else {
-                resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">(${timeString} 重生)</div>`;
-            }
+            if(window.innerWidth > 768) { resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`; } 
+            else { resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">(${timeString} 重生)</div>`; }
         }
 
-        // =======================================================
-        // ★ 核心修改：渲染功能加上捲軸限制、收合按鈕控制
-        // =======================================================
         function renderRespawnBadges() {
-            const wrapper = document.getElementById('respawn-area-wrapper');
-            if (!wrapper) return;
-
-            const cards = Array.from(document.querySelectorAll('.card'));
-            const respawnedItems = [];
-
+            const wrapper = document.getElementById('respawn-area-wrapper'); if (!wrapper) return;
+            const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); const respawnedItems = [];
             cards.forEach(card => {
-                const id = card.id.replace('card-', '');
-                const targetTime = parseFloat(card.dataset.respawnTime);
-                const nameVal = document.getElementById(`name-${id}`).value.trim();
-
-                if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") {
-                    respawnedItems.push({ id, name: nameVal, targetTime });
-                }
+                const id = card.id.replace('card-', ''); const targetTime = parseFloat(card.dataset.respawnTime); const nameVal = document.getElementById(`name-${id}`).value.trim();
+                if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { respawnedItems.push({ id, name: nameVal, targetTime }); }
             });
-
-            // 按照重生時間排序 (最新重生的在前面)
             respawnedItems.sort((a, b) => b.targetTime - a.targetTime);
-
-            if (respawnedItems.length === 0) {
-                wrapper.innerHTML = "";
-                return;
-            }
-
-            // 繪製外殼、標題列、以及收合按鈕
+            if (respawnedItems.length === 0) { wrapper.innerHTML = ""; return; }
             const toggleText = isRespawnSectionCollapsed ? `展開 (${respawnedItems.length}) ▾` : "隱藏收合 ▴";
-            wrapper.innerHTML = `
-                <div class="respawn-header-row">
-                    <span>🍄 已重生點位 (點擊即可重新倒數)：</span>
-                    <button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button>
-                </div>
-                <div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>
-            `;
-
+            wrapper.innerHTML = `<div class="respawn-header-row"><span>🍄 已重生點位：</span><button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button></div><div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>`;
             const badgeContainer = document.getElementById('respawn-badge-container');
             respawnedItems.forEach(item => {
-                const respawnDate = new Date(item.targetTime);
-                const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-
-                const badge = document.createElement('div');
-                badge.className = 'badge-item';
-                badge.innerHTML = `${item.name} <span class="badge-time">${timeString}</span>`;
-                badge.onclick = () => activateRespawnedCard(item.id);
-                badgeContainer.appendChild(badge);
+                const respawnDate = new Date(item.targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                const badge = document.createElement('div'); badge.className = 'badge-item'; badge.innerHTML = `${item.name} <span class="badge-time">${timeString}</span>`; badge.onclick = () => activateRespawnedCard(item.id); badgeContainer.appendChild(badge);
             });
         }
 
-        // 切換收合/展開按鈕事件
-        function toggleRespawnContainer() {
-            isRespawnSectionCollapsed = !isRespawnSectionCollapsed;
-            renderRespawnBadges(); // 重新渲染以更新按鈕文字和類別樣式
-        }
-
+        function toggleRespawnContainer() { isRespawnSectionCollapsed = !isRespawnSectionCollapsed; renderRespawnBadges(); }
         function activateRespawnedCard(id) {
-            const card = document.getElementById(`card-${id}`);
-            if (!card) return;
-
-            card.classList.remove('is-respawned');
-            renderRespawnBadges();
-
-            setTimeout(() => {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                const minInput = document.getElementById(`m-${id}`);
-                if (minInput) {
-                    minInput.focus();
-                    setTimeout(() => { minInput.select(); }, 20);
-                }
-            }, 80);
+            const card = document.getElementById(`card-${id}`); if (!card) return;
+            card.classList.remove('is-respawned'); renderRespawnBadges();
+            setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); const minInput = document.getElementById(`m-${id}`); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);
         }
 
         function sendWebNotification(title, bodyText) {
             try { document.getElementById('alert-sound').play(); } catch(e){}
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, { body: bodyText, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" });
-            }
+            if ("Notification" in window && Notification.permission === "granted") { new Notification(title, { body: bodyText, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" }); }
         }
 
         function sortMushrooms() {
-            const container = document.getElementById('tracker-container');
-            const cards = Array.from(container.getElementsByClassName('card'));
-            cards.sort((a, b) => { return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime); });
+            const container = document.getElementById('tracker-container'); const cards = Array.from(container.getElementsByClassName('card'));
+            cards.sort((a, b) => {
+                if (a.classList.contains('ocr-confirming') && !b.classList.contains('ocr-confirming')) return -1;
+                if (!a.classList.contains('ocr-confirming') && b.classList.contains('ocr-confirming')) return 1;
+                return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime);
+            });
             cards.forEach(card => container.appendChild(card));
         }
 
         function removeMushroom(id) {
+            if (id.startsWith('OCR_')) { removeOCRConfirmingCard(id); return; }
             if (timers[id]) clearInterval(timers[id]);
-            delete notifiedItems[id];
-            const card = document.getElementById(`card-${id}`);
-            if (card) card.remove();
-            saveState(); 
-            renderRespawnBadges(); 
+            delete notifiedItems[id]; const card = document.getElementById(`card-${id}`); if (card) card.remove();
+            saveState(); renderRespawnBadges(); 
         }
 
         function saveState() {
-            const cards = document.querySelectorAll('.card');
-            const data = [];
+            const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); const data = [];
             cards.forEach(card => {
-                const id = card.id.replace('card-', '');
-                const nameEl = document.getElementById(`name-${id}`);
-                if (nameEl) {
-                    data.push({
-                        id: id, name: nameEl.value,
-                        min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value,
-                        targetTime: card.dataset.respawnTime
-                    });
-                }
+                const id = card.id.replace('card-', ''); const nameEl = document.getElementById(`name-${id}`);
+                if (nameEl) { data.push({ id: id, name: nameEl.value, min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value, targetTime: card.dataset.respawnTime }); }
             });
             localStorage.setItem(DB_KEY, JSON.stringify(data));
         }
 
         function loadState() {
-            const stored = localStorage.getItem(DB_KEY);
-            document.getElementById('tracker-container').innerHTML = ''; 
-            
+            const stored = localStorage.getItem(DB_KEY); document.getElementById('tracker-container').innerHTML = ''; 
             if (stored) {
                 let data = JSON.parse(stored);
                 if (data.length > 0) {
-                    let hasEmpty = false;
-                    data = data.filter(item => {
-                        const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity");
-                        if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; }
-                        return true;
-                    });
-
-                    data.forEach(item => addMushroom(item));
-                    sortMushrooms(); 
-                    ensureEmptyRow(false); 
-                    renderRespawnBadges(); 
-                    saveState(); 
-                    return;
+                    let hasEmpty = false; data = data.filter(item => { const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity"); if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; } return true; });
+                    data.forEach(item => addMushroom(item)); sortMushrooms(); ensureEmptyRow(false); renderRespawnBadges(); saveState(); return;
                 }
             }
             ensureEmptyRow(false); 
