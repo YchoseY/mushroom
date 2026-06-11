@@ -28,8 +28,12 @@
         .btn-twin-ocr { background-color: #34495e; font-size: 0.9rem; padding: 12px; }
         .btn-twin-import { background-color: #00b894; font-size: 0.9rem; padding: 12px; }
 
-        /* 測試階段提醒文字樣式 */
-        .test-notice-bar { text-align: center; font-size: 0.75rem; color: #e74c3c; font-weight: bold; margin-bottom: 15px; letter-spacing: 0.5px; }
+        /* 測試階段提醒列 */
+        .test-notice-bar { text-align: center; font-size: 0.75rem; color: #e74c3c; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; }
+
+        /* 全域開Game時間設定區 */
+        .game-sync-panel { background: #fff; border: 2px solid #2ecc71; border-radius: 10px; padding: 10px 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 0.95rem; font-weight: bold; box-shadow: 0 3px 6px rgba(46,204,113,0.1); }
+        .game-sync-panel input[type="number"] { width: 50px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; font-weight: bold; color: #2ecc71; }
 
         /* 彈出視窗(Modal) */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; box-sizing: border-box; }
@@ -53,13 +57,17 @@
         .badge-item:hover { background-color: #e84393; }
         .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 5px; border-radius: 4px; }
 
-        /* 倒數卡片排版 */
-        .card { background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px; border-left: 6px solid #a4b0be; display: flex; align-items: center; justify-content: space-between; gap: 15px; box-sizing: border-box; }
+        /* 電腦 PC 版排版 */
+        .card { 
+            background: rgba(255, 255, 255, 0.92); padding: 15px 20px; border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05); margin-bottom: 12px;
+            border-left: 6px solid #a4b0be; display: flex; align-items: center; 
+            justify-content: space-between; gap: 20px; box-sizing: border-box; 
+        }
         .card.active { border-left-color: #2ecc71; background-color: rgba(245, 255, 245, 0.95); }
         .card.is-respawned { display: none !important; }
-        
-        /* OCR 待確認卡片樣式 */
         .card.ocr-confirming { border-color: #2575fc; box-shadow: 0 0 15px rgba(37, 117, 252, 0.4); background: rgba(240, 248, 255, 0.95); border-left-width: 6px !important; }
+
         .input-item-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 180px; font-size: 1rem; outline: none; background: rgba(255,255,255,0.9); }
         input[type="number"] { padding: 8px 4px; border: 1px solid #ccc; border-radius: 6px; width: 50px; font-size: 1rem; text-align: center; outline: none; background: rgba(255,255,255,0.9); }
@@ -67,19 +75,31 @@
 
         .btn-calc { background-color: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; flex-shrink: 0; }
         .card.ocr-confirming .btn-calc { background-color: #2575fc; animation: pulseBlue 1.5s infinite; }
-        @keyframes pulseBlue { 0% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(37, 117, 252, 0); } 100% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0); } }
 
-        .result-box { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; min-width: 150px; overflow: hidden; line-height: 1.3; margin-right: 10px; }
-        .countdown { font-size: 1.2rem; font-weight: bold; color: #d63031; white-space: nowrap; }
-        .target-time { font-size: 0.85rem; color: #636e72; white-space: nowrap; }
-        .btn-delete { background-color: #ff7675; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; flex-shrink: 0; }
+        /* 時間區：置右對齊 */
+        .result-box { 
+            flex-grow: 1; display: flex; flex-direction: column; 
+            justify-content: center; align-items: flex-end; 
+            min-width: 180px; overflow: hidden; line-height: 1.4; 
+        }
+        .countdown { font-size: 1.2rem; font-weight: bold; color: #d63031; white-space: nowrap; margin-bottom: 2px; }
+        
+        /* 輔助時間對齊 */
+        .target-time, .app-start-hint { 
+            font-size: 0.85rem; color: #57606f; white-space: nowrap; 
+            background: none; padding: 0; margin: 0; text-align: right; font-weight: normal;
+        }
+        .app-start-hint b { color: #2ecc71; font-weight: bold; }
 
+        /* 刪除按鈕靠最右 */
+        .btn-delete { background-color: #ff7675; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; flex-shrink: 0; margin-left: 5px; }
+
+        /* 手機版佈局 */
         @media (max-width: 768px) {
             body { padding: 10px; }
             h2 { font-size: 1.5rem; margin: 10px 0; }
             .header-buttons { gap: 6px; margin-bottom: 10px; }
             .btn-main { padding: 10px 4px; font-size: 0.9rem; border-radius: 6px; }
-            
             .import-twin-row { gap: 6px; margin-bottom: 5px; }
             .btn-twin-ocr, .btn-twin-import { padding: 10px 4px; font-size: 0.82rem; border-radius: 6px; }
 
@@ -88,11 +108,12 @@
             input[type="text"] { padding: 8px; width: 45%; font-size: 1rem; border-radius: 5px; flex-grow: 1; }
             input[type="number"] { padding: 8px 2px; width: 42px; font-size: 1rem; border-radius: 5px; }
             .btn-calc { padding: 8px 12px; font-size: 1rem; border-radius: 5px; }
+            
             .mobile-row-two { display: flex !important; align-items: center; justify-content: space-between; width: 100%; border-top: 1px dashed #ddd; padding-top: 6px; margin-top: 2px; }
-            .result-box { display: flex; flex-direction: row; align-items: center; gap: 10px; min-width: unset; margin-right: 0; line-height: 1.2; flex-grow: 1; }
-            .countdown { font-size: 1.1rem; } 
-            .target-time { font-size: 0.85rem; } 
-            .btn-delete { background: none; color: #a4b0be; padding: 4px 8px; font-size: 1.3rem; border-radius: 0; }
+            .result-box { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: unset; margin-right: 0; line-height: 1.2; flex-grow: 1; }
+            .countdown { font-size: 1.1rem; margin-bottom: 0; } 
+            .target-time, .app-start-hint { font-size: 0.8rem; text-align: left; }
+            .btn-delete { background: none; color: #a4b0be; padding: 4px 8px; font-size: 1.3rem; border-radius: 0; margin-left: 0; }
         }
     </style>
 </head>
@@ -113,6 +134,12 @@
     </div>
     
     <div class="test-notice-bar">⚠️ 截圖辨識功能目前為實驗測試階段，辨識完畢請務必手動確認數據</div>
+
+    <div class="game-sync-panel">
+        ⏱️ 我的手機載入地圖需要：
+        <input type="number" id="app-launch-offset" min="0" max="7" value="3" onchange="saveLaunchOffset(); triggerAllCountdownsImmediately();">
+        秒 (地圖每 8 秒刷新一次)
+    </div>
 
     <div id="respawn-area-wrapper"></div>
     <div id="tracker-container"></div>
@@ -136,7 +163,7 @@
         <h3>📥 匯入朋友的戰情</h3>
         <button class="btn-main btn-qr" onclick="startCameraScan()" style="margin-bottom: 10px; width: 100%;">📷 相機掃描 QR</button>
         <div id="reader" style="width: 100%; display: none; margin-bottom: 10px;"></div>
-        <input type="text" id="manualCodeInput" placeholder="在此貼上文字碼" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        <input type="text" id="manualCodeInput" placeholder="Cloud Code" style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
         <button class="btn-main btn-twin-import" onclick="importManualCode()" style="width: 100%;">確認貼上匯入</button>
         <button class="btn-main btn-add" onclick="closeImportModal()" style="background:#aaa; color:#fff; margin-top: 10px; width: 100%;">取消</button>
     </div>
@@ -145,13 +172,42 @@
 
     <script>
         const DB_KEY = 'pikmin_mushroom_final_database';
+        const OFFSET_KEY = 'pikmin_app_launch_offset_time';
         
         let timers = {};
         let notifiedItems = {}; 
         let html5QrcodeScanner = null;
         let isRespawnSectionCollapsed = false; 
 
-        window.onload = function() { requestNotificationPermission(); migrateOldData(); checkSharedData(); initOCR(); };
+        window.onload = function() { 
+            requestNotificationPermission(); 
+            migrateOldData(); 
+            loadLaunchOffset();
+            checkSharedData(); 
+            initOCR(); 
+        };
+
+        function loadLaunchOffset() {
+            const saved = localStorage.getItem(OFFSET_KEY);
+            if (saved !== null) { document.getElementById('app-launch-offset').value = saved; }
+        }
+        function saveLaunchOffset() {
+            const val = document.getElementById('app-launch-offset').value;
+            localStorage.setItem(OFFSET_KEY, val);
+        }
+
+        function triggerAllCountdownsImmediately() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const id = card.id.replace('card-', '');
+                const targetTime = parseFloat(card.dataset.respawnTime);
+                if (targetTime && targetTime !== Infinity && timers[id]) {
+                    const respawnDate = new Date(targetTime);
+                    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                    updateCountdown(id, targetTime, timeString);
+                }
+            });
+        }
 
         function openOcrModal() { document.getElementById('ocr-backdrop').style.display = 'block'; document.getElementById('ocrModal').style.display = 'block'; }
         function closeOcrModal() { document.getElementById('ocr-backdrop').style.display = 'none'; document.getElementById('ocrModal').style.display = 'none'; }
@@ -196,9 +252,8 @@
 
                     const reader = new FileReader();
                     reader.onload = function() {
-                        // ★ 核心升級：將影像送入 Canvas 進行黑白高對比度前處理，大幅消減草地背景干擾
                         preprocessImage(reader.result, (processedImgBase64) => {
-                            Tesseract.recognize(processedImgBase64, 'chi_tra+eng') // 複合語系增強數字辨識
+                            Tesseract.recognize(processedImgBase64, 'chi_tra+eng')
                             .then(({ data: { text } }) => {
                                 parseOCRResult(text, photoExactTimestamp);
                                 resolve(); 
@@ -214,7 +269,6 @@
             });
         }
 
-        // 隱形 Canvas 特徵二值化處理 (Binarization filter)
         function preprocessImage(base64Src, callback) {
             const img = new Image();
             img.onload = function() {
@@ -227,15 +281,11 @@
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imgData.data;
                 
-                // 進行高對比度灰階濾鏡處理，逼出白字與紅字的邊緣
                 for (let i = 0; i < data.length; i += 4) {
                     let r = data[i], g = data[i+1], b = data[i+2];
-                    let v = (0.2126*r + 0.7152*g + 0.0722*b); // 亮度公式
-                    
-                    // 提高對比
+                    let v = (0.2126*r + 0.7152*g + 0.0722*b);
                     let threshold = 140;
                     let finalVal = v > threshold ? 255 : 0;
-                    
                     data[i] = finalVal; data[i+1] = finalVal; data[i+2] = finalVal;
                 }
                 ctx.putImageData(imgData, 0, 0);
@@ -246,7 +296,6 @@
 
         function parseOCRResult(text, photoExactTimestamp) {
             let locationName = "截圖辨識點位";
-            
             const lines = text.split('\n');
             for(let line of lines) {
                 let cleanLine = line.trim().replace(/[>><\|\[\]\(\):;\-\s]/g, '');
@@ -262,20 +311,17 @@
                 }
             }
 
-            // 更廣泛的數字清洗捕捉
             const numberGroups = text.match(/\d+/g);
             let hours = 0, mins = 0, secs = 0;
             let hasFoundValidTime = false;
 
             if (numberGroups && numberGroups.length >= 2) {
                 let extractedNums = numberGroups.map(n => parseInt(n)).filter(n => !isNaN(n));
-                
                 for (let i = extractedNums.length - 1; i >= 1; i--) {
                     let potentialSec = extractedNums[i];
                     let potentialMin = extractedNums[i-1];
                     let potentialHour = (i >= 2) ? extractedNums[i-2] : 0;
 
-                    // 如果秒數剛好被看錯缺了尾數(像30變3)，或者小於60
                     if (potentialSec <= 60 && potentialMin <= 60) {
                         secs = potentialSec;
                         mins = potentialMin;
@@ -336,7 +382,6 @@
             ensureEmptyRow(false); 
         }
 
-        // 事件綁定：全面實作「Focus 全選機制」，只要跳格就反白，方便測試階段人工修正
         function attachOCREvents(id) {
             const nameInput = document.getElementById(`name-${id}`);
             const minInput = document.getElementById(`m-${id}`);
@@ -357,9 +402,66 @@
             if (card) card.remove();
         }
 
-        // =======================================================
-        // 以下為常規歷史功能 (完美保留未動)
-        // =======================================================
+        function calculateAppStartSuggestion(totalRemainingSec) {
+            const baseOffset = parseInt(document.getElementById('app-launch-offset').value) || 0;
+            if (totalRemainingSec < baseOffset) return null;
+            const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
+            if (maxN < 0) return null;
+            return baseOffset + (8 * maxN);
+        }
+
+        function updateCountdown(id, targetTime, timeString) {
+            const resDiv = document.getElementById(`res-${id}`); 
+            const card = document.getElementById(`card-${id}`); 
+            if (!resDiv || !card) return;
+            
+            const now = Date.now(); 
+            const diff = targetTime - now;
+            
+            if (diff > 0 && diff <= 60000 && !notifiedItems[id]) { 
+                notifiedItems[id] = true; 
+                sendWebNotification("🍄 蘑菇即將重生！", `「${document.getElementById(`name-${id}`).value || "蘑菇"}」將在 1 分鐘後重生！`); 
+            }
+            
+            if (diff <= 0) {
+                clearInterval(timers[id]); 
+                resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
+                if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity" && !card.classList.contains('ocr-confirming')) { 
+                    card.classList.add('is-respawned'); 
+                    renderRespawnBadges(); 
+                }
+                return;
+            }
+            
+            const totalRemainingSec = Math.floor(diff / 1000);
+            const rM = Math.floor(totalRemainingSec / 60); 
+            const rS = totalRemainingSec % 60;
+            
+            const startSuggestion = calculateAppStartSuggestion(totalRemainingSec);
+            let suggestionHtml = "";
+            if (startSuggestion !== null) {
+                const sugM = Math.floor(startSuggestion / 60);
+                const sugS = startSuggestion % 60;
+                const formattedTime = sugM > 0 ? `${sugM}分${sugS}秒` : `${sugS}秒`;
+                suggestionHtml = `<div class="app-start-hint">建議開Game：倒數 <b>${formattedTime}</b></div>`;
+            }
+
+            // ★ 完美修復點：移除手動寫死的「下午」，完全交由 timeString 自帶的原生本地格式渲染
+            if(window.innerWidth > 768) { 
+                resDiv.innerHTML = `
+                    <div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div>
+                    <div class="target-time">預計重生於 ${timeString}</div>
+                    ${suggestionHtml}
+                `; 
+            } else { 
+                resDiv.innerHTML = `
+                    <div class="countdown">${rM}分${rS}秒</div>
+                    <div class="target-time">(${timeString} 重生)</div>
+                    ${suggestionHtml}
+                `; 
+            }
+        }
+
         function migrateOldData() {
             const oldKeys = ['pikminMushrooms', 'pikminMushrooms_v2', 'pikminMushrooms_pwa', 'pikminMushrooms_v3', 'pikminMushrooms_v4'];
             let migratedData = [];
@@ -521,21 +623,6 @@
             updateCountdown(id, targetTime, timeString); timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
         }
 
-        function updateCountdown(id, targetTime, timeString) {
-            const resDiv = document.getElementById(`res-${id}`); const card = document.getElementById(`card-${id}`); const nameStr = document.getElementById(`name-${id}`).value || "蘑菇";
-            if (!resDiv || !card) return;
-            const now = Date.now(); const diff = targetTime - now;
-            if (diff > 0 && diff <= 60000 && !notifiedItems[id]) { notifiedItems[id] = true; sendWebNotification("🍄 蘑菇即將重生！", `「${nameStr}」將在 1 分鐘後重生！`); }
-            if (diff <= 0) {
-                clearInterval(timers[id]); resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
-                if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity" && !card.classList.contains('ocr-confirming')) { card.classList.add('is-respawned'); renderRespawnBadges(); }
-                return;
-            }
-            const rM = Math.floor(diff / 60000); const rS = Math.floor((diff % 60000) / 1000);
-            if(window.innerWidth > 768) { resDiv.innerHTML = `<div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div><div class="target-time">預計重生於 ${timeString}</div>`; } 
-            else { resDiv.innerHTML = `<div class="countdown">${rM}分${rS}秒</div><div class="target-time">(${timeString} 重生)</div>`; }
-        }
-
         function renderRespawnBadges() {
             const wrapper = document.getElementById('respawn-area-wrapper'); if (!wrapper) return;
             const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); const respawnedItems = [];
@@ -583,6 +670,7 @@
             saveState(); renderRespawnBadges(); 
         }
 
+        // 存檔/讀檔完美對齊
         function saveState() {
             const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); const data = [];
             cards.forEach(card => {
