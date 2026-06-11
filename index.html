@@ -10,10 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="蘑菇戰情板">
-    
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "微軟正黑體", sans-serif; background-color: #f1f2f6; color: #2d3436; padding: 15px; max-width: 900px; margin: 0 auto; min-height: 100vh; }
         h2 { text-align: center; color: #2c3e50; margin: 15px 0; font-size: 1.6rem; }
@@ -27,17 +23,17 @@
         .btn-qr { background-color: #9b5de5; }
         .btn-code { background-color: #2575fc; }
         
-        /* ★ 完美並排雙鈕：使用 grid 讓兩顆按鈕各佔一半空間 */
+        /* 雙按鈕並排 */
         .import-twin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .btn-twin-ocr { background-color: #34495e; font-size: 0.9rem; padding: 12px; }
         .btn-twin-import { background-color: #00b894; font-size: 0.9rem; padding: 12px; }
 
-        /* 彈出視窗(Modal)共用核心樣式 */
+        /* 彈出視窗(Modal) */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; box-sizing: border-box; }
         .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 290; }
         .modal h3 { margin-top: 0; color: #2c3e50; font-size: 1.2rem; margin-bottom: 15px; }
 
-        /* 📸 上傳圖片專屬 Modal 內部樣式 */
+        /* 上傳圖片專屬 Modal */
         #file-input { display: none; }
         .btn-ocr-trigger-upload { display: block; background: #34495e; color: white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0; }
         .ocr-modal-hint { font-size: 0.78rem; color: #7f8c8d; line-height: 1.4; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #7f8c8d; }
@@ -81,7 +77,6 @@
             .header-buttons { gap: 6px; margin-bottom: 10px; }
             .btn-main { padding: 10px 4px; font-size: 0.9rem; border-radius: 6px; }
             
-            /* 手機版雙按鈕並排調密 */
             .import-twin-row { gap: 6px; margin-bottom: 12px; }
             .btn-twin-ocr, .btn-twin-import { padding: 10px 4px; font-size: 0.82rem; border-radius: 6px; }
 
@@ -153,13 +148,9 @@
 
         window.onload = function() { requestNotificationPermission(); migrateOldData(); checkSharedData(); initOCR(); };
 
-        // 開啟/關閉圖片辨識 Modal
         function openOcrModal() { document.getElementById('ocr-backdrop').style.display = 'block'; document.getElementById('ocrModal').style.display = 'block'; }
         function closeOcrModal() { document.getElementById('ocr-backdrop').style.display = 'none'; document.getElementById('ocrModal').style.display = 'none'; }
 
-        // =======================================================
-        // ★ 核心升級：支援多圖批次排隊處理與流水線 OCR
-        // =======================================================
         function initOCR() {
             const fileInput = document.getElementById('file-input');
             fileInput.addEventListener('change', async (e) => {
@@ -172,7 +163,6 @@
                 triggerBtn.style.display = 'none';
                 loadingStatus.style.display = 'block';
 
-                // 利用 async/await 依序排隊解碼每一張照片
                 for (let i = 0; i < files.length; i++) {
                     loadingStatus.innerText = `🕵️‍♂️ 正在辨識第 ${i + 1} / ${files.length} 張照片...`;
                     await processSingleFile(files[i]);
@@ -180,17 +170,15 @@
 
                 loadingStatus.style.display = 'none';
                 triggerBtn.style.display = 'block';
-                fileInput.value = ''; // 清空選擇
-                closeOcrModal(); // 批次辨識完自動關閉視窗，讓使用者看主畫面
+                fileInput.value = ''; 
+                closeOcrModal(); 
             });
         }
 
-        // 封裝成 Promise 結構以便排隊執行
         function processSingleFile(file) {
             return new Promise((resolve) => {
                 let photoExactTimestamp = Date.now();
 
-                // 1. 抓取這張照片的 EXIF 原生秒數
                 EXIF.getData(file, function() {
                     const dateTimeStr = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
                     if (dateTimeStr) {
@@ -201,17 +189,16 @@
                         if (!isNaN(parsedDate.getTime())) { photoExactTimestamp = parsedDate.getTime(); }
                     }
 
-                    // 2. 讀取 Base64 進圖 Tesseract OCR 辨識文字
                     const reader = new FileReader();
                     reader.onload = function() {
                         Tesseract.recognize(reader.result, 'chi_tra')
                         .then(({ data: { text } }) => {
                             parseOCRResult(text, photoExactTimestamp);
-                            resolve(); // 這張好囉，換下一張
+                            resolve(); 
                         })
                         .catch(err => {
                             console.error("單張圖片OCR失敗:", err);
-                            resolve(); // 失敗也放行，繼續下一張
+                            resolve(); 
                         });
                     };
                     reader.readAsDataURL(file);
@@ -219,31 +206,71 @@
             });
         }
 
+        // =======================================================
+        // ★ 核心升級：強力字串清洗機制 + 模糊數字時間識別大腦
+        // =======================================================
         function parseOCRResult(text, photoExactTimestamp) {
             let locationName = "截圖辨識點位";
             
+            // 升級一：強力清洗過濾，尋找真正像地點的名字
             const lines = text.split('\n');
             for(let line of lines) {
                 let cleanLine = line.trim();
-                if(cleanLine.includes("展示") || cleanLine.includes("系統") || cleanLine.includes("公園") || cleanLine.includes("廟") || cleanLine.includes("教堂") || cleanLine.includes("郵局") || cleanLine.includes("大樓")) {
-                    locationName = cleanLine.replace(/[>><\|\[\]]/g, '').trim();
+                // 剔除掉只有怪怪符號或太短的垃圾文字
+                cleanLine = cleanLine.replace(/[>><\|\[\]\(\):;\-\s]/g, '');
+                
+                if (cleanLine.length >= 2 && (
+                    cleanLine.includes("展示") || cleanLine.includes("系統") || 
+                    cleanLine.includes("公園") || cleanLine.includes("廟") || 
+                    cleanLine.includes("教堂") || cleanLine.includes("郵局") || 
+                    cleanLine.includes("大樓") || cleanLine.includes("活動") || 
+                    cleanLine.includes("中心") || cleanLine.includes("廣場")
+                )) {
+                    locationName = cleanLine;
                     break;
                 }
             }
 
-            const timeRegExp = /剩下\s*(\d+)\s*小時\s*(\d+)\s*分\s*(\d+)\s*秒|\s*(\d+)\s*分\s*(\d+)\s*秒/;
-            const match = text.match(timeRegExp);
+            // 升級二：模糊數字時間抓取 (不靠小時、分、秒中文，直接抓連在一起的數字串)
+            // 這個正規表達式會去抓取類似 "1 13 56" 或是 "13 56" 這種被空格、特殊字元或看錯的中文字隔開的數字群
+            const numberGroups = text.match(/\d+/g);
+            
+            let hours = 0;
+            let mins = 0;
+            let secs = 0;
+            let hasFoundValidTime = false;
+
+            if (numberGroups && numberGroups.length >= 2) {
+                // 倒著找，因為「分、秒」一定是出現在倒數台詞的最後面
+                // 檢查是不是符合 3 組數字（時、分、秒）或 2 組數字（分、秒）
+                let extractedNums = numberGroups.map(n => parseInt(n)).filter(n => !isNaN(n));
+                
+                // 尋找符合皮克敏倒數合適邏輯的數字（通常分秒會小於60，時會小於24）
+                // 我們在所有提取出的數字裡，尋找最右邊、像時間的組合
+                for (let i = extractedNums.length - 1; i >= 1; i--) {
+                    let potentialSec = extractedNums[i];
+                    let potentialMin = extractedNums[i-1];
+                    let potentialHour = (i >= 2) ? extractedNums[i-2] : 0;
+
+                    if (potentialSec < 60 && potentialMin < 60) {
+                        // 判定成功！這就是我們要的时间
+                        secs = potentialSec;
+                        mins = potentialMin;
+                        hours = (potentialHour < 24 && i >= 2) ? potentialHour : 0;
+                        hasFoundValidTime = true;
+                        break;
+                    }
+                }
+            }
 
             let calculatedTargetTime = Infinity;
-            let displayMin = ""; let displaySec = "";
+            let displayMin = ""; 
+            let displaySec = "";
 
-            if (match) {
-                let hours = 0, mins = 0, secs = 0;
-                if (match[1]) { hours = parseInt(match[1]); mins = parseInt(match[2]); secs = parseInt(match[3]); } 
-                else if (match[4]) { mins = parseInt(match[4]); secs = parseInt(match[5]); }
-
+            if (hasFoundValidTime) {
                 displayMin = (hours * 60) + mins;
                 displaySec = secs;
+                // 智慧公式：原生EXIF秒數時間戳 + 倒數總秒數 + 5分鐘遊戲冷卻
                 calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
             }
 
@@ -251,7 +278,7 @@
         }
 
         function createNewOCRCard(location, targetTime, displayMin, displaySec) {
-            const id = 'OCR_' + Date.now() + '_' + Math.floor(Math.random() * 1000); // 隨機後綴防多圖 ID 撞車
+            const id = 'OCR_' + Date.now() + '_' + Math.floor(Math.random() * 1000); 
             const card = document.createElement('div');
             card.className = 'card ocr-confirming'; 
             card.id = `card-${id}`;
@@ -273,7 +300,7 @@
             `;
             
             const container = document.getElementById('tracker-container');
-            container.prepend(card); // 丟到最頂部
+            container.prepend(card); 
             attachOCREvents(id);
             if (targetTime !== Infinity) { resumeTracking(id, targetTime); }
         }
@@ -318,9 +345,7 @@
             if (currentDb) return; 
             for (let oldKey of oldKeys) {
                 const oldData = localStorage.getItem(oldKey);
-                if (oldData) {
-                    try { const parsed = JSON.parse(oldData); if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; } } catch(e) {}
-                }
+                if (oldData) { try { const parsed = JSON.parse(oldData); if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; } } catch(e) {} }
             }
             if (migratedData.length > 0) { localStorage.setItem(DB_KEY, JSON.stringify(migratedData)); }
         }
