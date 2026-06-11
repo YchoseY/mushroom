@@ -24,9 +24,12 @@
         .btn-code { background-color: #2575fc; }
         
         /* 雙按鈕並排 */
-        .import-twin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .import-twin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 5px; }
         .btn-twin-ocr { background-color: #34495e; font-size: 0.9rem; padding: 12px; }
         .btn-twin-import { background-color: #00b894; font-size: 0.9rem; padding: 12px; }
+
+        /* 測試階段提醒文字樣式 */
+        .test-notice-bar { text-align: center; font-size: 0.75rem; color: #e74c3c; font-weight: bold; margin-bottom: 15px; letter-spacing: 0.5px; }
 
         /* 彈出視窗(Modal) */
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 300; width: 85%; max-width: 400px; text-align: center; box-sizing: border-box; }
@@ -36,7 +39,7 @@
         /* 上傳圖片專屬 Modal */
         #file-input { display: none; }
         .btn-ocr-trigger-upload { display: block; background: #34495e; color: white; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0; }
-        .ocr-modal-hint { font-size: 0.78rem; color: #7f8c8d; line-height: 1.4; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #7f8c8d; }
+        .ocr-modal-hint { font-size: 0.78rem; color: #7f8c8d; line-height: 1.4; text-align: left; background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #ff7675; }
         #ocr-loading-status { display: none; font-size: 0.88rem; color: #ff9f43; font-weight: bold; margin: 10px 0; }
 
         /* 重生標籤外殼 */
@@ -77,7 +80,7 @@
             .header-buttons { gap: 6px; margin-bottom: 10px; }
             .btn-main { padding: 10px 4px; font-size: 0.9rem; border-radius: 6px; }
             
-            .import-twin-row { gap: 6px; margin-bottom: 12px; }
+            .import-twin-row { gap: 6px; margin-bottom: 5px; }
             .btn-twin-ocr, .btn-twin-import { padding: 10px 4px; font-size: 0.82rem; border-radius: 6px; }
 
             .card { padding: 10px 12px; margin-bottom: 8px; border-left-width: 5px; border-radius: 8px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
@@ -105,23 +108,25 @@
     </div>
 
     <div class="import-twin-row">
-        <button class="btn-main btn-twin-ocr" onclick="openOcrModal()">📸 截圖自動辨識 (可多選)</button>
+        <button class="btn-main btn-twin-ocr" onclick="openOcrModal()">📸 截圖自動辨識 (🧪測試中)</button>
         <button class="btn-main btn-twin-import" onclick="openImportModal()">📥 匯入好友戰情 / 掃描 QR</button>
     </div>
+    
+    <div class="test-notice-bar">⚠️ 截圖辨識功能目前為實驗測試階段，辨識完畢請務必手動確認數據</div>
 
     <div id="respawn-area-wrapper"></div>
     <div id="tracker-container"></div>
 
     <div class="modal-backdrop" id="ocr-backdrop" onclick="closeOcrModal()"></div>
     <div class="modal" id="ocrModal">
-        <h3>📸 上傳打菇截圖辨識</h3>
+        <h3>📸 上傳打菇截圖辨識 (🧪測試階段)</h3>
         <input type="file" id="file-input" accept="image/*" multiple>
         <label for="file-input" class="btn-ocr-trigger-upload">選擇手機截圖 (可選多張)</label>
         <div id="ocr-loading-status">🕵️‍♂️ 正在辨識第 1 張照片...</div>
         <div class="ocr-modal-hint">
-            • 支援**多選照片**一次批次匯入。<br>
-            • 系統會自動精確撈取照片底層的原生拍攝秒數。<br>
-            • 辨識完後會在主畫面產生藍色霓虹框卡片，點擊 <b>✓</b> 即可完美歸隊。
+            <b>🧪 測試階段注意事項：</b><br>
+            • 遊戲背景太花綠時，地點名稱和時間數字可能偶爾有誤。<br>
+            • <b>優化福利</b>：辨識後格子會自動進入「全選反白狀態」，按 Enter 即可快速盲打校正！
         </div>
         <button class="btn-main btn-add" onclick="closeOcrModal()" style="background:#aaa; color:#fff; margin-top: 15px; width: 100%;">關閉</button>
     </div>
@@ -164,7 +169,7 @@
                 loadingStatus.style.display = 'block';
 
                 for (let i = 0; i < files.length; i++) {
-                    loadingStatus.innerText = `🕵️‍♂️ 正在辨識第 ${i + 1} / ${files.length} 張照片...`;
+                    loadingStatus.innerText = `🕵️‍♂️ 正在影像前處理與辨識第 ${i + 1} / ${files.length} 張...`;
                     await processSingleFile(files[i]);
                 }
 
@@ -191,14 +196,17 @@
 
                     const reader = new FileReader();
                     reader.onload = function() {
-                        Tesseract.recognize(reader.result, 'chi_tra')
-                        .then(({ data: { text } }) => {
-                            parseOCRResult(text, photoExactTimestamp);
-                            resolve(); 
-                        })
-                        .catch(err => {
-                            console.error("單張圖片OCR失敗:", err);
-                            resolve(); 
+                        // ★ 核心升級：將影像送入 Canvas 進行黑白高對比度前處理，大幅消減草地背景干擾
+                        preprocessImage(reader.result, (processedImgBase64) => {
+                            Tesseract.recognize(processedImgBase64, 'chi_tra+eng') // 複合語系增強數字辨識
+                            .then(({ data: { text } }) => {
+                                parseOCRResult(text, photoExactTimestamp);
+                                resolve(); 
+                            })
+                            .catch(err => {
+                                console.error("OCR失敗:", err);
+                                resolve(); 
+                            });
                         });
                     };
                     reader.readAsDataURL(file);
@@ -206,54 +214,69 @@
             });
         }
 
-        // =======================================================
-        // ★ 核心升級：強力字串清洗機制 + 模糊數字時間識別大腦
-        // =======================================================
+        // 隱形 Canvas 特徵二值化處理 (Binarization filter)
+        function preprocessImage(base64Src, callback) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                
+                // 進行高對比度灰階濾鏡處理，逼出白字與紅字的邊緣
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i], g = data[i+1], b = data[i+2];
+                    let v = (0.2126*r + 0.7152*g + 0.0722*b); // 亮度公式
+                    
+                    // 提高對比
+                    let threshold = 140;
+                    let finalVal = v > threshold ? 255 : 0;
+                    
+                    data[i] = finalVal; data[i+1] = finalVal; data[i+2] = finalVal;
+                }
+                ctx.putImageData(imgData, 0, 0);
+                callback(canvas.toDataURL());
+            };
+            img.src = base64Src;
+        }
+
         function parseOCRResult(text, photoExactTimestamp) {
             let locationName = "截圖辨識點位";
             
-            // 升級一：強力清洗過濾，尋找真正像地點的名字
             const lines = text.split('\n');
             for(let line of lines) {
-                let cleanLine = line.trim();
-                // 剔除掉只有怪怪符號或太短的垃圾文字
-                cleanLine = cleanLine.replace(/[>><\|\[\]\(\):;\-\s]/g, '');
-                
+                let cleanLine = line.trim().replace(/[>><\|\[\]\(\):;\-\s]/g, '');
                 if (cleanLine.length >= 2 && (
                     cleanLine.includes("展示") || cleanLine.includes("系統") || 
                     cleanLine.includes("公園") || cleanLine.includes("廟") || 
                     cleanLine.includes("教堂") || cleanLine.includes("郵局") || 
-                    cleanLine.includes("大樓") || cleanLine.includes("活動") || 
-                    cleanLine.includes("中心") || cleanLine.includes("廣場")
+                    cleanLine.includes("大樓") || cleanLine.includes("中心") || 
+                    cleanLine.includes("廣場") || cleanLine.includes("神秘")
                 )) {
                     locationName = cleanLine;
                     break;
                 }
             }
 
-            // 升級二：模糊數字時間抓取 (不靠小時、分、秒中文，直接抓連在一起的數字串)
-            // 這個正規表達式會去抓取類似 "1 13 56" 或是 "13 56" 這種被空格、特殊字元或看錯的中文字隔開的數字群
+            // 更廣泛的數字清洗捕捉
             const numberGroups = text.match(/\d+/g);
-            
-            let hours = 0;
-            let mins = 0;
-            let secs = 0;
+            let hours = 0, mins = 0, secs = 0;
             let hasFoundValidTime = false;
 
             if (numberGroups && numberGroups.length >= 2) {
-                // 倒著找，因為「分、秒」一定是出現在倒數台詞的最後面
-                // 檢查是不是符合 3 組數字（時、分、秒）或 2 組數字（分、秒）
                 let extractedNums = numberGroups.map(n => parseInt(n)).filter(n => !isNaN(n));
                 
-                // 尋找符合皮克敏倒數合適邏輯的數字（通常分秒會小於60，時會小於24）
-                // 我們在所有提取出的數字裡，尋找最右邊、像時間的組合
                 for (let i = extractedNums.length - 1; i >= 1; i--) {
                     let potentialSec = extractedNums[i];
                     let potentialMin = extractedNums[i-1];
                     let potentialHour = (i >= 2) ? extractedNums[i-2] : 0;
 
-                    if (potentialSec < 60 && potentialMin < 60) {
-                        // 判定成功！這就是我們要的时间
+                    // 如果秒數剛好被看錯缺了尾數(像30變3)，或者小於60
+                    if (potentialSec <= 60 && potentialMin <= 60) {
                         secs = potentialSec;
                         mins = potentialMin;
                         hours = (potentialHour < 24 && i >= 2) ? potentialHour : 0;
@@ -264,13 +287,11 @@
             }
 
             let calculatedTargetTime = Infinity;
-            let displayMin = ""; 
-            let displaySec = "";
+            let displayMin = ""; let displaySec = "";
 
             if (hasFoundValidTime) {
                 displayMin = (hours * 60) + mins;
                 displaySec = secs;
-                // 智慧公式：原生EXIF秒數時間戳 + 倒數總秒數 + 5分鐘遊戲冷卻
                 calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
             }
 
@@ -293,7 +314,7 @@
                 </div>
                 <div class="mobile-row-two">
                     <div class="result-box" id="res-${id}">
-                        <span style="color: #2575fc; font-weight: bold; font-size:0.85rem;">📸 請確認點位</span>
+                        <span style="color: #2575fc; font-weight: bold; font-size:0.85rem;">🧪 測試中請核對</span>
                     </div>
                     <button class="btn-delete" onclick="removeOCRConfirmingCard('${id}')">✕</button>
                 </div>
@@ -315,14 +336,15 @@
             ensureEmptyRow(false); 
         }
 
+        // 事件綁定：全面實作「Focus 全選機制」，只要跳格就反白，方便測試階段人工修正
         function attachOCREvents(id) {
             const nameInput = document.getElementById(`name-${id}`);
             const minInput = document.getElementById(`m-${id}`);
             const secInput = document.getElementById(`s-${id}`);
 
-            nameInput.addEventListener('focus', () => { setTimeout(() => { nameInput.select(); }, 10); });
-            minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });
-            secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });
+            nameInput.addEventListener('focus', () => { setTimeout(() => { nameInput.select(); }, 15); });
+            minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 15); });
+            secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 15); });
 
             nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});
             minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});
