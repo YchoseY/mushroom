@@ -53,10 +53,9 @@
         .btn-toggle-respawn { background: #7f8c8d; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: bold; }
         #respawn-badge-container { display: flex; flex-wrap: wrap; gap: 8px; max-height: 110px; overflow-y: auto; padding-right: 4px; transition: max-height 0.25s ease-out; }
         #respawn-badge-container.collapsed { max-height: 0px !important; overflow: hidden; padding: 0; margin: 0; }
-        
-        /* 純名稱重生小標籤 */
-        .badge-item { background-color: #ff7675; color: white; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; display: inline-block; box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); }
+        .badge-item { background-color: #ff7675; color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); }
         .badge-item:hover { background-color: #e84393; }
+        .badge-time { font-size: 0.75rem; background: rgba(0,0,0,0.15); padding: 2px 5px; border-radius: 4px; }
 
         /* 電腦 PC 版排版 */
         .card { 
@@ -180,12 +179,11 @@
         let html5QrcodeScanner = null;
         let isRespawnSectionCollapsed = false; 
 
-        // ★ 安全修正啟動鏈：確保 Offset 先載入，再去載入歷史點位
         window.onload = function() { 
             requestNotificationPermission(); 
             migrateOldData(); 
-            loadLaunchOffset(); // 1. 先確認這個欄位有數值
-            checkSharedData();  // 2. 這裏面會呼叫 loadState() 去渲染資料，這時候就不會報錯了
+            loadLaunchOffset();
+            checkSharedData(); 
             initOCR(); 
         };
 
@@ -405,8 +403,7 @@
         }
 
         function calculateAppStartSuggestion(totalRemainingSec) {
-            const offsetInput = document.getElementById('app-launch-offset');
-            const baseOffset = offsetInput ? (parseInt(offsetInput.value) || 0) : 3; // 加上防護罩避免讀不到節點
+            const baseOffset = parseInt(document.getElementById('app-launch-offset').value) || 0;
             if (totalRemainingSec < baseOffset) return null;
             const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
             if (maxN < 0) return null;
@@ -449,6 +446,7 @@
                 suggestionHtml = `<div class="app-start-hint">建議開Game：倒數 <b>${formattedTime}</b></div>`;
             }
 
+            // ★ 完美修復點：移除手動寫死的「下午」，完全交由 timeString 自帶的原生本地格式渲染
             if(window.innerWidth > 768) { 
                 resDiv.innerHTML = `
                     <div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div>
@@ -464,36 +462,182 @@
             }
         }
 
-        function renderRespawnBadges() {
-            const wrapper = document.getElementById('respawn-area-wrapper'); 
-            if (!wrapper) return;
-            
-            const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); 
-            const respawnedItems = [];
-            
-            cards.forEach(card => {
-                const id = card.id.replace('card-', ''); 
-                const targetTime = parseFloat(card.dataset.respawnTime); 
-                const nameEl = document.getElementById(`name-${id}`);
-                const nameVal = nameEl ? nameEl.value.trim() : "";
-                if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { 
-                    respawnedItems.push({ id, name: nameVal, targetTime }); 
+        function migrateOldData() {
+            const oldKeys = ['pikminMushrooms', 'pikminMushrooms_v2', 'pikminMushrooms_pwa', 'pikminMushrooms_v3', 'pikminMushrooms_v4'];
+            let migratedData = [];
+            const currentDb = localStorage.getItem(DB_KEY);
+            if (currentDb) return; 
+            for (let oldKey of oldKeys) {
+                const oldData = localStorage.getItem(oldKey);
+                if (oldData) { try { const parsed = JSON.parse(oldData); if (Array.isArray(parsed) && parsed.length > 0) { migratedData = parsed; break; } } catch(e) {} }
+            }
+            if (migratedData.length > 0) { localStorage.setItem(DB_KEY, JSON.stringify(migratedData)); }
+        }
+
+        function requestNotificationPermission() { if ("Notification" in window) { Notification.requestPermission(); } }
+
+        function getPackedData() {
+            saveState();
+            const data = localStorage.getItem(DB_KEY);
+            if (!data || data === "[]") return null;
+            return btoa(encodeURIComponent(data));
+        }
+
+        function mergeArrays(sharedArray) {
+            const localString = localStorage.getItem(DB_KEY);
+            const localArray = localString ? JSON.parse(localString) : [];
+            const mergedMap = new Map();
+            let uniqueTimeCounter = Date.now();
+            localArray.forEach(item => { const nameKey = item.name.trim(); if (nameKey !== "") { mergedMap.set(nameKey, item); } });
+            sharedArray.forEach(item => {
+                const nameKey = item.name.trim();
+                if (nameKey !== "") {
+                    if (mergedMap.has(nameKey)) { const oldItem = mergedMap.get(nameKey); item.id = oldItem.id; mergedMap.set(nameKey, item); } 
+                    else { uniqueTimeCounter++; item.id = uniqueTimeCounter; mergedMap.set(nameKey, item); }
                 }
             });
+            localStorage.setItem(DB_KEY, JSON.stringify(Array.from(mergedMap.values())));
+            document.getElementById('tracker-container').innerHTML = '';
+            loadState();
+        }
+
+        function shareViaURL() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料可以分享喔！');
+            const shareUrl = window.location.origin + window.location.pathname + '?share=' + packed;
+            navigator.clipboard.writeText(shareUrl).then(() => { alert('🔗 LINE 分享網址已複製！'); }).catch(() => { prompt("請複製以下網址：", shareUrl); });
+        }
+
+        function checkSharedData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareData = urlParams.get('share');
+            if (shareData) {
+                try { const decodedString = decodeURIComponent(atob(shareData)); mergeArrays(JSON.parse(decodedString)); window.history.replaceState({}, document.title, window.location.pathname); alert("✅ 已成功合併紀錄！"); } catch(e) { alert("❌ 網址解析失敗。"); }
+            } else { loadState(); }
+        }
+
+        function showShareQR() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料喔！');
+            document.getElementById('qr-backdrop').style.display = 'block';
+            document.getElementById('qrModal').style.display = 'block';
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, { text: packed, width: 200, height: 200 });
+        }
+        function closeQRModal() { document.getElementById('qr-backdrop').style.display = 'none'; document.getElementById('qrModal').style.display = 'none'; }
+
+        function copyShareCode() {
+            const packed = getPackedData();
+            if (!packed) return alert('目前沒有資料喔！');
+            const prefixCode = "PIKMIN-" + packed;
+            navigator.clipboard.writeText(prefixCode).then(() => { alert('📋 皮克敏文字碼已複製！'); }).catch(() => { prompt("請手動複製此代碼：", prefixCode); });
+        }
+
+        function openImportModal() { document.getElementById('import-backdrop').style.display = 'block'; document.getElementById('importModal').style.display = 'block'; }
+        function closeImportModal() {
+            if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => {}); html5QrcodeScanner = null; }
+            document.getElementById('reader').style.display = 'none'; document.getElementById('import-backdrop').style.display = 'none'; document.getElementById('importModal').style.display = 'none';
+        }
+
+        function importManualCode() {
+            let val = document.getElementById('manualCodeInput').value.trim();
+            if(!val) return alert('請先貼上代碼！');
+            if (val.startsWith("PIKMIN-") || val.startsWith("PKM-")) val = val.replace("PIKMIN-", "").replace("PKM-", "");
+            try { mergeArrays(JSON.parse(decodeURIComponent(atob(val)))); document.getElementById('manualCodeInput').value = ''; closeImportModal(); alert("✅ 成功合併資料！"); } catch(e) { alert("❌ 代碼解析失敗。"); }
+        }
+
+        function startCameraScan() {
+            document.getElementById('reader').style.display = 'block'; html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
+                (decodedText) => { try { mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText)))); closeImportModal(); alert("✅ 條碼掃描成功！"); } catch(e) { alert("條碼格式錯誤。"); } }, () => {}
+            ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
+        }
+
+        function addMushroom(data = null) {
+            const container = document.getElementById('tracker-container');
+            const id = data ? data.id : Date.now(); 
+            const card = document.createElement('div');
+            card.className = 'card'; card.id = `card-${id}`;
+            card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity; 
             
+            card.innerHTML = `
+                <div class="input-item-wrap">
+                    <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
+                    <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
+                    <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
+                    <button class="btn-calc" id="btn-${id}" onclick="startTracking('${id}')">✓</button>
+                </div>
+                <div class="mobile-row-two">
+                    <div class="result-box" id="res-${id}"> <span style="color: #bbb; font-size:0.85rem;">未設定</span> </div>
+                    <button class="btn-delete" id="del-${id}" onclick="removeMushroom('${id}')">✕</button>
+                </div>
+            `;
+            container.appendChild(card); attachEvents(id); updateButtonText(id); 
+            if (data && data.targetTime && data.targetTime !== "Infinity") { resumeTracking(id, parseInt(data.targetTime)); } 
+            else if (!data) { saveState(); }
+            return id; 
+        }
+
+        function updateButtonText(id) {
+            const btnCalc = document.getElementById(`btn-${id}`); const btnDel = document.getElementById(`del-${id}`);
+            if (!btnCalc || !btnDel) return;
+            if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }
+        }
+
+        function attachEvents(id) {
+            const nameInput = document.getElementById(`name-${id}`); const minInput = document.getElementById(`m-${id}`); const secInput = document.getElementById(`s-${id}`); const btnCalc = document.getElementById(`btn-${id}`);
+            nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});
+            minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});
+            secInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); btnCalc.click(); }});
+            minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });
+            secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });
+            nameInput.addEventListener('change', saveState);
+        }
+
+        function ensureEmptyRow(shouldFocus = false) {
+            const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); 
+            let hasTrueEmptyRow = false; let emptyCardId = null;
+            for (let card of cards) {
+                const id = card.id.replace('card-', '');
+                const nameVal = document.getElementById(`name-${id}`).value.trim(); const minVal = document.getElementById(`m-${id}`).value.trim(); const secVal = document.getElementById(`s-${id}`).value.trim();
+                if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") { hasTrueEmptyRow = true; emptyCardId = id; break; }
+            }
+            if (!hasTrueEmptyRow) { emptyCardId = addMushroom(); }
+            if (shouldFocus && emptyCardId) { setTimeout(() => { const nameInput = document.getElementById(`name-${emptyCardId}`); if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }, 100); }
+        }
+
+        function startTracking(id) {
+            const min = parseInt(document.getElementById(`m-${id}`).value) || 0; const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
+            if (min === 0 && sec === 0) { return; }
+            const now = Date.now(); const targetTime = now + (((min * 60) + sec + 300) * 1000);
+            delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
+        }
+
+        function resumeTracking(id, targetTime) {
+            const card = document.getElementById('card-' + id); if (!card) return;
+            card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');
+            if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
+            if (timers[id]) clearInterval(timers[id]);
+            const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+            updateCountdown(id, targetTime, timeString); timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
+        }
+
+        function renderRespawnBadges() {
+            const wrapper = document.getElementById('respawn-area-wrapper'); if (!wrapper) return;
+            const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); const respawnedItems = [];
+            cards.forEach(card => {
+                const id = card.id.replace('card-', ''); const targetTime = parseFloat(card.dataset.respawnTime); const nameVal = document.getElementById(`name-${id}`).value.trim();
+                if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { respawnedItems.push({ id, name: nameVal, targetTime }); }
+            });
             respawnedItems.sort((a, b) => b.targetTime - a.targetTime);
             if (respawnedItems.length === 0) { wrapper.innerHTML = ""; return; }
-            
             const toggleText = isRespawnSectionCollapsed ? `展開 (${respawnedItems.length}) ▾` : "隱藏收合 ▴";
-            wrapper.innerHTML = `<div class="respawn-header-row"><span>🍄 已重生歷史菇點：</span><button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button></div><div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>`;
-            
+            wrapper.innerHTML = `<div class="respawn-header-row"><span>🍄 已重生點位：</span><button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button></div><div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>`;
             const badgeContainer = document.getElementById('respawn-badge-container');
             respawnedItems.forEach(item => {
-                const badge = document.createElement('div'); 
-                badge.className = 'badge-item'; 
-                badge.innerHTML = `${item.name}`; 
-                badge.onclick = () => activateRespawnedCard(item.id); 
-                badgeContainer.appendChild(badge);
+                const respawnDate = new Date(item.targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                const badge = document.createElement('div'); badge.className = 'badge-item'; badge.innerHTML = `${item.name} <span class="badge-time">${timeString}</span>`; badge.onclick = () => activateRespawnedCard(item.id); badgeContainer.appendChild(badge);
             });
         }
 
@@ -526,6 +670,7 @@
             saveState(); renderRespawnBadges(); 
         }
 
+        // 存檔/讀檔完美對齊
         function saveState() {
             const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); const data = [];
             cards.forEach(card => {
