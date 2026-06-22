@@ -1,6 +1,7 @@
-function openImportModal() { document.getElementById('import-backdrop').style.display = 'block'; document.getElementById('importModal').style.display = 'block'; }
+function openOcrModal() { document.getElementById('ocr-backdrop').style.display = 'block'; document.getElementById('ocrModal').style.display = 'block'; }
+function closeOcrModal() { document.getElementById('ocr-backdrop').style.display = 'none'; document.getElementById('ocrModal').style.display = 'none'; }
 
-// ★ 完美補回：控制匯入小視窗的關閉（修復點取消沒反應）
+function openImportModal() { document.getElementById('import-backdrop').style.display = 'block'; document.getElementById('importModal').style.display = 'block'; }
 function closeImportModal() {
     if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => {}); html5QrcodeScanner = null; }
     document.getElementById('reader').style.display = 'none'; document.getElementById('import-backdrop').style.display = 'none'; document.getElementById('importModal').style.display = 'none';
@@ -34,7 +35,7 @@ function initOCR() {
         loadingStatus.style.display = 'block';
 
         for (let i = 0; i < files.length; i++) {
-            loadingStatus.innerText = `🕵️‍♂️ 正在影像前處理與辨識第 ${i + 1} / ${files.length} 張...`;
+            loadingStatus.innerText = `🕵️裝正在影像前處理與辨識第 ${i + 1} / ${files.length} 張...`;
             await processSingleFile(files[i]);
         }
 
@@ -178,7 +179,7 @@ function createNewOCRCard(location, targetTime, displayMin, displaySec) {
     const container = document.getElementById('tracker-container');
     if(container) container.prepend(card); 
     attachOCREvents(id);
-    if (targetTime !== Infinity) { resumeTracking(id, targetTime); }
+    if (targetTime !== Infinity && typeof resumeTracking === 'function') { resumeTracking(id, targetTime); }
 }
 
 function confirmOCRCard(id) {
@@ -186,9 +187,9 @@ function confirmOCRCard(id) {
     if (!card) return;
     card.classList.remove('ocr-confirming');
     card.classList.add('active');
-    sortMushrooms();
+    if (typeof sortMushrooms === 'function') sortMushrooms();
     saveState(); 
-    ensureEmptyRow(false); 
+    if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
 }
 
 function attachOCREvents(id) {
