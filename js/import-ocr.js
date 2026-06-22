@@ -17,7 +17,51 @@ function importManualCode() {
 function startCameraScan() {
     document.getElementById('reader').style.display = 'block'; html5QrcodeScanner = new Html5Qrcode("reader");
     html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 200, height: 200 } },
-        (decodedText) => { try { mergeArrays(JSON.parse(decodeURIComponent(atob(decodedText)))); closeImportModal(); alert("✅ 條碼掃描成功！"); } catch(e) { alert("條碼格式錯誤。"); } }, () => {}
+        (decodedText) => { 
+            let rawData = decodedText.trim();
+            
+            // 智慧解析大腦：如果掃到的是被 TinyURL 濃縮過的大格子 QR 碼
+            if (rawData.includes("tinyurl.com/")) {
+                if (html5QrcodeScanner) { html5QrcodeScanner.stop().catch(e => {}); html5QrcodeScanner = null; }
+                document.getElementById('reader').innerHTML = "<div style='color:#2ecc71; font-weight:bold; padding:20px;'>🧬 成功辨識！正在向雲端解析原廠菇點資料...</div>";
+                
+                // 向雲端索取被藏在短網址背後的完整原廠長字串
+                fetch(rawData)
+                .then(res => {
+                    const finalUrl = res.url;
+                    if (finalUrl.includes("?share=")) {
+                        const packedPart = finalUrl.split("?share=")[1];
+                        mergeArrays(JSON.parse(decodeURIComponent(atob(packedPart))));
+                        closeImportModal();
+                        alert("✅ 短網址 QR 碼高速同步合併成功！");
+                    } else {
+                        alert("解析失敗，短網址內未包含有效的戰情資料。");
+                        closeImportModal();
+                    }
+                })
+                .catch(err => {
+                    alert("網路連線逾時，無法解析短網址數據。");
+                    closeImportModal();
+                });
+                return;
+            }
+            
+            // 以下為原本就健康的長網址與文字碼備援相容機制
+            if (rawData.includes("?share=")) {
+                rawData = rawData.split("?share=")[1];
+            }
+            if (rawData.startsWith("PIKMIN-") || rawData.startsWith("PKM-")) {
+                rawData = rawData.replace("PIKMIN-", "").replace("PKM-", "");
+            }
+            
+            try { 
+                mergeArrays(JSON.parse(decodeURIComponent(atob(rawData)))); 
+                closeImportModal(); 
+                alert("✅ 條碼掃描成功！"); 
+            } catch(e) { 
+                alert("條碼格式解析失敗。"); 
+            } 
+        }, () => {}
     ).catch(err => { alert("無法開啟相機。"); document.getElementById('reader').style.display = 'none'; });
 }
 
@@ -35,7 +79,7 @@ function initOCR() {
         loadingStatus.style.display = 'block';
 
         for (let i = 0; i < files.length; i++) {
-            loadingStatus.innerText = `🕵️裝正在影像前處理與辨識第 ${i + 1} / ${files.length} 張...`;
+            loadingStatus.innerText = `🕵️‍♂️ 正在影像前處理與辨識第 ${i + 1} / ${files.length} 張...`;
             await processSingleFile(files[i]);
         }
 
