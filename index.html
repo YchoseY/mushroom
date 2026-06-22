@@ -54,7 +54,7 @@
         #respawn-badge-container { display: flex; flex-wrap: wrap; gap: 8px; max-height: 110px; overflow-y: auto; padding-right: 4px; transition: max-height 0.25s ease-out; }
         #respawn-badge-container.collapsed { max-height: 0px !important; overflow: hidden; padding: 0; margin: 0; }
         
-        /* 修復外觀：純文字重生小標籤 */
+        /* 純名稱重生小標籤 */
         .badge-item { background-color: #ff7675; color: white; padding: 8px 14px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; display: inline-block; box-shadow: 0 2px 5px rgba(255, 118, 117, 0.2); }
         .badge-item:hover { background-color: #e84393; }
 
@@ -180,11 +180,12 @@
         let html5QrcodeScanner = null;
         let isRespawnSectionCollapsed = false; 
 
+        // ★ 安全修正啟動鏈：確保 Offset 先載入，再去載入歷史點位
         window.onload = function() { 
             requestNotificationPermission(); 
             migrateOldData(); 
-            loadLaunchOffset();
-            checkSharedData(); 
+            loadLaunchOffset(); // 1. 先確認這個欄位有數值
+            checkSharedData();  // 2. 這裏面會呼叫 loadState() 去渲染資料，這時候就不會報錯了
             initOCR(); 
         };
 
@@ -404,7 +405,8 @@
         }
 
         function calculateAppStartSuggestion(totalRemainingSec) {
-            const baseOffset = parseInt(document.getElementById('app-launch-offset').value) || 0;
+            const offsetInput = document.getElementById('app-launch-offset');
+            const baseOffset = offsetInput ? (parseInt(offsetInput.value) || 0) : 3; // 加上防護罩避免讀不到節點
             if (totalRemainingSec < baseOffset) return null;
             const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
             if (maxN < 0) return null;
@@ -462,9 +464,6 @@
             }
         }
 
-        // =======================================================
-        // ★ 核心修改：全面省略小標籤內部的時間資訊，只留最純粹的地點名稱
-        // =======================================================
         function renderRespawnBadges() {
             const wrapper = document.getElementById('respawn-area-wrapper'); 
             if (!wrapper) return;
@@ -475,7 +474,8 @@
             cards.forEach(card => {
                 const id = card.id.replace('card-', ''); 
                 const targetTime = parseFloat(card.dataset.respawnTime); 
-                const nameVal = document.getElementById(`name-${id}`).value.trim();
+                const nameEl = document.getElementById(`name-${id}`);
+                const nameVal = nameEl ? nameEl.value.trim() : "";
                 if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { 
                     respawnedItems.push({ id, name: nameVal, targetTime }); 
                 }
@@ -491,7 +491,6 @@
             respawnedItems.forEach(item => {
                 const badge = document.createElement('div'); 
                 badge.className = 'badge-item'; 
-                // ★ 完美省略：只留下純名稱，不輸出 timeString
                 badge.innerHTML = `${item.name}`; 
                 badge.onclick = () => activateRespawnedCard(item.id); 
                 badgeContainer.appendChild(badge);
