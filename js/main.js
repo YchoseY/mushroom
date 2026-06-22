@@ -5,6 +5,57 @@ function sendWebNotification(title, bodyText) {
     if ("Notification" in window && Notification.permission === "granted") { new Notification(title, { body: bodyText, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" }); }
 }
 
+function updateCountdown(id, targetTime, timeString) {
+    const resDiv = document.getElementById(`res-${id}`); 
+    const card = document.getElementById(`card-${id}`); 
+    if (!resDiv || !card) return;
+    
+    const now = Date.now(); 
+    const diff = targetTime - now;
+    
+    if (diff > 0 && diff <= 60000 && !notifiedItems[id]) { 
+        notifiedItems[id] = true; 
+        sendWebNotification("🍄 蘑菇即將重生！", `「${document.getElementById(`name-${id}`).value || "蘑菇"}」將在 1 分鐘後重生！`); 
+    }
+    
+    if (diff <= 0) {
+        if (timers[id]) clearInterval(timers[id]); 
+        resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
+        if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity" && !card.classList.contains('ocr-confirming')) { 
+            card.classList.add('is-respawned'); 
+            renderRespawnBadges(); 
+        }
+        return;
+    }
+    
+    const totalRemainingSec = Math.floor(diff / 1000);
+    const rM = Math.floor(totalRemainingSec / 60); 
+    const rS = totalRemainingSec % 60;
+    
+    const startSuggestion = calculateAppStartSuggestion(totalRemainingSec);
+    let suggestionHtml = "";
+    if (startSuggestion !== null) {
+        const sugM = Math.floor(startSuggestion / 60);
+        const sugS = startSuggestion % 60;
+        const formattedTime = sugM > 0 ? `${sugM}分${sugS}秒` : `${sugS}秒`;
+        suggestionHtml = `<div class="app-start-hint">建議開Game：倒數 <b>${formattedTime}</b></div>`;
+    }
+
+    if(window.innerWidth > 768) { 
+        resDiv.innerHTML = `
+            <div class="countdown">剩餘 ${rM} 分 ${rS} 秒</div>
+            <div class="target-time">預計重生於 ${timeString}</div>
+            ${suggestionHtml}
+        `; 
+    } else { 
+        resDiv.innerHTML = `
+            <div class="countdown">${rM}分${rS}秒</div>
+            <div class="target-time">(${timeString} 重生)</div>
+            ${suggestionHtml}
+        `; 
+    }
+}
+
 function addMushroom(data = null) {
     const container = document.getElementById('tracker-container');
     if(!container) return;
@@ -73,7 +124,17 @@ function resumeTracking(id, targetTime) {
     if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
     if (timers[id]) clearInterval(timers[id]);
     const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    updateCountdown(id, targetTime, timeString); timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
+    if (typeof updateCountdown === 'function') {
+        updateCountdown(id, targetTime, timeString); 
+        timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
+    }
+}
+
+function removeMushroom(id) {
+    if (id.startsWith('OCR_')) { if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); return; }
+    if (timers[id]) clearInterval(timers[id]);
+    delete notifiedItems[id]; const card = document.getElementById(`card-${id}`); if (card) card.remove();
+    saveState(); renderRespawnBadges(); 
 }
 
 function sortMushrooms() {
@@ -81,7 +142,7 @@ function sortMushrooms() {
     const cards = Array.from(container.getElementsByClassName('card'));
     cards.sort((a, b) => {
         if (a.classList.contains('ocr-confirming') && !b.classList.contains('ocr-confirming')) return -1;
-        if (!a.classList.contains('ocr-confirming') && b.getElementsByClassName('ocr-confirming')) return 1;
+        if (!a.classList.contains('ocr-confirming') && b.classList.contains('ocr-confirming')) return 1;
         return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime);
     });
     cards.forEach(card => container.appendChild(card));
@@ -101,7 +162,7 @@ function renderRespawnBadges() {
     const badgeContainer = document.getElementById('respawn-badge-container');
     respawnedItems.forEach(item => {
         const badge = document.createElement('div'); badge.className = 'badge-item'; 
-        badge.innerHTML = `${item.name}`; // 歷史小標籤純名稱優化，完美不顯示時間
+        badge.innerHTML = `${item.name}`; 
         badge.onclick = () => activateRespawnedCard(item.id); badgeContainer.appendChild(badge);
     });
 }
@@ -111,4 +172,12 @@ function activateRespawnedCard(id) {
     const card = document.getElementById(`card-${id}`); if (!card) return;
     card.classList.remove('is-respawned'); renderRespawnBadges();
     setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); const minInput = document.getElementById(`m-${id}`); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);
+}
+
+function calculateAppStartSuggestion(totalRemainingSec) {
+    const baseOffset = parseInt(document.getElementById('app-launch-offset').value) || 0;
+    if (totalRemainingSec < baseOffset) return null;
+    const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
+    if (maxN < 0) return null;
+    return baseOffset + (8 * maxN);
 }
