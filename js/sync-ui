@@ -1,0 +1,56 @@
+// ★ 雲端同步介面全自動控制器
+document.addEventListener("DOMContentLoaded", () => {
+    updateSyncUiStatus();
+});
+
+// 全自動刷新畫面上的雲端狀態
+function updateSyncUiStatus() {
+    const statusTextEl = document.getElementById("sync-status-text");
+    const actionsRowEl = document.getElementById("sync-actions-row");
+    
+    if (!statusTextEl) return;
+    
+    // 從先前寫好的 state.js 裡抓取目前有沒有綁定金鑰
+    const currentKey = typeof getStoredSyncKey === "function" ? getStoredSyncKey() : null;
+    
+    if (currentKey) {
+        statusTextEl.innerHTML = `🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-size:1.05rem;">${currentKey}</span> 】`;
+        // 已綁定成功，把輸入框和按鈕收起來，改成「解除綁定」按鈕，防止使用者搞混
+        if (actionsRowEl) {
+            actionsRowEl.innerHTML = `
+                <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:4px;">💡 所有日常修改皆會全自動同步至雲端。</span>
+                <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                    ❌ 解除雲端綁定
+                </button>
+            `;
+        }
+    } else {
+        statusTextEl.innerHTML = `⚪ 雲端狀態：單機模式 (資料僅存於此手機)`;
+    }
+}
+
+// 驅動第二台裝置連線的 UI 橋樑（自帶防呆提示）
+function triggerUiBinding() {
+    const inputEl = document.getElementById("sync-input-field");
+    if (!inputEl) return;
+    
+    const val = inputEl.value.trim();
+    if (!val) {
+        alert("請先輸入另一個裝置產生的 6 碼金鑰喔！");
+        return;
+    }
+    
+    // 呼叫先前在 state.js 寫好的「智慧撈取 + 條列純菇點名稱摘要盾牌」
+    if (typeof bindExistingSyncKey === "function") {
+        bindExistingSyncKey(val);
+    }
+}
+
+// 解除綁定（回復成單機本地模式）
+function unlinkSyncKey() {
+    if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留在手機上。")) {
+        localStorage.removeItem('pikmin_cloud_sync_6_char_key'); // 清除金鑰牆
+        alert("已成功退回本地單機模式！");
+        location.reload();
+    }
+}
