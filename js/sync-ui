@@ -1,16 +1,36 @@
-// ★ 雲端同步介面與大腦修復完全體
+// ★ 全獨立雲端同步模組 (2026 修復完全體)
+const MY_GAS_API_URL = "https://script.google.com/macros/s/AKfycbzzCL1Bin86sj4yvtSeF2n_dMF7LDHB_EbDJI2zX4DUFI0FMidnfX1V-wco1tLGFahP/exec"; 
+const SYNC_KEY_STORAGE = 'pikmin_cloud_sync_6_char_key';
+
 document.addEventListener("DOMContentLoaded", () => {
+    // 1. 初始化介面
     updateSyncUiStatus();
+    
+    // 2. 開機自動去雲端拉取
+    loadCloudDataOnInit();
+
+    // 3. 攔截原本的 saveState，讓它存完本地後自動順便送去雲端，不傷原架構
+    if (typeof window.saveState === "function") {
+        const originalSaveState = window.saveState;
+        window.saveState = function() {
+            originalSaveState(); // 先執行原本健康的存檔
+            uploadToCloudBackground(); // 再背景默默送雲端
+        };
+    }
 });
 
+function getStoredSyncKey() {
+    const key = localStorage.getItem(SYNC_KEY_STORAGE);
+    return key ? key.trim().toUpperCase() : null;
+}
+
+// 介面按鈕與狀態切換
 function updateSyncUiStatus() {
     const statusTextEl = document.getElementById("sync-status-text");
     const actionsRowEl = document.getElementById("sync-actions-row");
-    
     if (!statusTextEl) return;
     
-    const currentKey = typeof getStoredSyncKey === "function" ? getStoredSyncKey() : null;
-    
+    const currentKey = getStoredSyncKey();
     if (currentKey) {
         statusTextEl.innerHTML = `🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-weight:bold; font-size:1.05rem;">${currentKey}</span> 】`;
         if (actionsRowEl) {
@@ -43,85 +63,131 @@ function updateSyncUiStatus() {
     }
 }
 
+// 開機拉取
+function loadCloudDataOnInit() {
+    const syncKey = getStoredSyncKey();
+    if (!syncKey || !MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return;
+    
+    fetch(MY_GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "load", key: syncKey })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        if (resData.status === "success" && resData.data && resData.data !== "[]") {
+            localStorage.setItem('pikmin_mushroom_final_database', resData.data);
+            if (typeof renderLoadedData === "function") renderLoadedData(resData.data);
+        }
+    }).catch(err => console.log("雲端自動加載略過", err));
+}
+
+// 背景上傳
+function uploadToCloudBackground() {
+    const syncKey = getStoredSyncKey();
+    if (!syncKey || !MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return;
+    
+    const localData = localStorage.getItem('pikmin_mushroom_final_database') || "[]";
+    const localArray = JSON.parse(localData);
+    
+    fetch(MY_GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "load", key: syncKey })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        let finalArray = localArray;
+        if (resData.status === "success" && resData.data && resData.data !== "[]") {
+            const cloudArray = JSON.parse(resData.data);
+            finalArray = uiModuleMerge(localArray, cloudArray);
+        }
+        fetch(MY_GAS_API_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalArray) })
+        });
+    }).catch(err => console.log("備份同步略過", err));
+}
+
+// 手動同步按鈕
+function forceManualSync() {
+    const syncKey = getStoredSyncKey();
+    if (!syncKey) return;
+    alert("正在連線雲端進行三方智慧融合...");
+    
+    const localData = localStorage.getItem('pikmin_mushroom_final_database') || "[]";
+    const localArray = JSON.parse(localData);
+    
+    fetch(MY_GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "load", key: syncKey })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        let finalArray = localArray;
+        if (resData.status === "success" && resData.data && resData.data !== "[]") {
+            const cloudArray = JSON.parse(resData.data);
+            finalArray = uiModuleMerge(localArray, cloudArray);
+        }
+        localStorage.setItem('pikmin_mushroom_final_database', JSON.stringify(finalArray));
+        if (typeof renderLoadedData === "function") renderLoadedData(JSON.stringify(finalArray));
+        
+        fetch(MY_GAS_API_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalArray) })
+        }).then(() => {
+            alert("🚀 雲端三方智慧融合與同步刷新成功！");
+        });
+    }).catch(() => alert("❌ 刷新失敗，請確認網路連線。"));
+}
+
+// 產生 6 碼
+function generateNewSyncKey() {
+    if (!MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return alert("❌ 請填入正確的 API 網址！");
+    
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let resultKey = "PKM";
+    for (let i = 0; i < 3; i++) { resultKey += chars.charAt(Math.floor(Math.random() * chars.length)); }
+    
+    fetch(MY_GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "check_duplicate", key: resultKey })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        if (resData.status === "success" && resData.exists === true) {
+            generateNewSyncKey(); 
+        } else {
+            localStorage.setItem(SYNC_KEY_STORAGE, resultKey);
+            const localData = localStorage.getItem('pikmin_mushroom_final_database') || "[]";
+            
+            fetch(MY_GAS_API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "save", key: resultKey, data: localData })
+            }).then(() => {
+                alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
+                updateSyncUiStatus();
+            });
+        }
+    }).catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
+}
+
+// 輸入金鑰對接
 function triggerUiBinding() {
     const inputEl = document.getElementById("sync-input-field");
-    if (!inputEl) return;
+    if (!inputEl || !inputEl.value.trim()) return alert("請輸入有效的 6 碼金鑰！");
     
-    const val = inputEl.value.trim();
-    if (!val) {
-        alert("請先輸入另一個裝置產生的 6 碼金鑰喔！");
-        return;
-    }
+    const cleanKey = inputEl.value.trim().toUpperCase();
     
-    bindExistingSyncKey(val);
-}
-
-function unlinkSyncKey() {
-    if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留在手機上。")) {
-        localStorage.removeItem('pikmin_cloud_sync_6_char_key'); 
-        alert("已成功退回本地單機模式！");
-        updateSyncUiStatus();
-    }
-}
-
-function forceManualSync() {
-    if (typeof saveState === 'function') {
-        saveState(); 
-        alert('🚀 已強制將目前畫面菇點與雲端進行三方智慧融合！');
-    }
-}
-
-function generateNewSyncKey() {
-    if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
-    
-    if (typeof getStoredSyncKey === "function" && getStoredSyncKey()) {
-        if(!confirm(`⚠️ 您目前已經綁定過金鑰了。\n重新生成將會脫離目前的雲端房間，確定要重新生成嗎？`)) return;
-    }
-
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    
-    function loopCreateAndCheck() {
-        let resultKey = "PKM"; 
-        for (let i = 0; i < 3; i++) { resultKey += chars.charAt(Math.floor(Math.random() * chars.length)); }
-        
-        fetch(GAS_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ action: "check_duplicate", key: resultKey })
-        })
-        .then(res => res.json())
-        .then(resData => {
-            if (resData.status === "success" && resData.exists === true) {
-                loopCreateAndCheck(); 
-            } else {
-                localStorage.setItem('pikmin_cloud_sync_6_char_key', resultKey);
-                const localData = localStorage.getItem('pikmin_mushroom_final_database') || "[]";
-                
-                fetch(GAS_API_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "save", key: resultKey, data: localData })
-                }).then(() => {
-                    alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
-                    updateSyncUiStatus(); 
-                    if (typeof saveState === "function") saveState(); 
-                });
-            }
-        })
-        .catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
-    }
-    
-    loopCreateAndCheck();
-}
-
-function bindExistingSyncKey(inputRawKey) {
-    if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
-    if (!inputRawKey) return alert("請輸入有效的 6 碼金鑰！");
-    
-    const cleanKey = inputRawKey.trim().toUpperCase();
-    
-    fetch(GAS_API_URL, {
+    fetch(MY_GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ action: "load", key: cleanKey })
@@ -132,10 +198,10 @@ function bindExistingSyncKey(inputRawKey) {
             const cloudArray = JSON.parse(resData.data || "[]");
             
             if (cloudArray.length === 0) {
-                if (confirm(`💡 您輸入的金鑰【 ${cleanKey} 】目前在雲端是「空置的保險箱」（內部無任何菇點紀錄）。\n\n確認這是否為您剛建立的全新金鑰？點擊「確定」將會把此裝置目前的菇點綁定上傳。`)) {
-                    localStorage.setItem('pikmin_cloud_sync_6_char_key', cleanKey);
+                if (confirm(`💡 您輸入的金鑰【 ${cleanKey} 】目前在雲端無任何菇點紀錄。\n\n點擊「確定」將會把此裝置目前的菇點綁定上傳。`)) {
+                    localStorage.setItem(SYNC_KEY_STORAGE, cleanKey);
                     updateSyncUiStatus();
-                    if (typeof saveState === "function") saveState();
+                    uploadToCloudBackground();
                 }
                 return;
             }
@@ -147,41 +213,49 @@ function bindExistingSyncKey(inputRawKey) {
             
             const summaryText = nameList.length > 0 ? nameList.join("\n") : "(內含未命名地點紀錄)";
             
-            const userChoice = confirm(
-                `🔍 雲端同步確認安全盾\n\n` +
-                `已成功在雲端找到該金鑰包含的以下菇點摘要：\n` +
-                `----------------------------------------\n` +
-                `${summaryText}\n` +
-                `----------------------------------------\n` +
-                `⚠️ 請核對：這是否為您另一台裝置的資料？\n\n` +
-                `點擊「確定」將合併兩台裝置的菇點。\n` +
-                `點擊「取消」將中止連線，保護您的資料。`
-            );
-            
-            if (userChoice) {
-                localStorage.setItem('pikmin_cloud_sync_6_char_key', cleanKey);
+            if (confirm(`🔍 雲端同步確認安全盾\n\n已成功找到該金鑰包含的以下菇點摘要：\n----------------------------------------\n${summaryText}\n----------------------------------------\n⚠️ 請核對：這是否為您另一台裝置的資料？\n\n點擊「確定」將合併兩台裝置的菇點。`)) {
+                localStorage.setItem(SYNC_KEY_STORAGE, cleanKey);
                 const localString = localStorage.getItem('pikmin_mushroom_final_database');
                 const localArray = localString ? JSON.parse(localString) : [];
                 
-                if (typeof backgroundExecuteMerge === "function") {
-                    const finalMerged = backgroundExecuteMerge(localArray, cloudArray);
-                    localStorage.setItem('pikmin_mushroom_final_database', JSON.stringify(finalMerged));
-                    
-                    fetch(GAS_API_URL, {
-                        method: "POST",
-                        mode: "no-cors",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "save", key: cleanKey, data: JSON.stringify(finalMerged) })
-                    }).then(() => {
-                        alert("✅ 雲端智慧同步綁定成功！裝置已完美交織合併。");
-                        updateSyncUiStatus();
-                        if (typeof loadState === "function") loadState();
-                    });
-                } else {
+                const finalMerged = uiModuleMerge(localArray, cloudArray);
+                localStorage.setItem('pikmin_mushroom_final_database', JSON.stringify(finalMerged));
+                
+                if (typeof renderLoadedData === "function") renderLoadedData(JSON.stringify(finalMerged));
+                
+                fetch(MY_GAS_API_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "save", key: cleanKey, data: JSON.stringify(finalMerged) })
+                }).then(() => {
+                    alert("✅ 雲端智慧同步綁定成功！");
                     updateSyncUiStatus();
-                }
+                });
             }
         }
-    })
-    .catch(err => alert("❌ 金鑰連線查無資料或網路逾時，請重新檢查。"));
+    }).catch(() => alert("❌ 金鑰連線查無資料或網路逾時。"));
+}
+
+function unlinkSyncKey() {
+    if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留。")) {
+        localStorage.removeItem(SYNC_KEY_STORAGE);
+        alert("已成功退回本地單機模式！");
+        updateSyncUiStatus();
+    }
+}
+
+// 內部融合算法
+function uiModuleMerge(localArray, remoteArray) {
+    const mergedMap = new Map();
+    let uniqueTimeCounter = Date.now();
+    localArray.forEach(item => { if (item.name && item.name.trim() !== "") { mergedMap.set(item.name.trim(), item); } });
+    remoteArray.forEach(item => {
+        if (item.name && item.name.trim() !== "") {
+            const nameKey = item.name.trim();
+            if (mergedMap.has(nameKey)) { const oldItem = mergedMap.get(nameKey); item.id = oldItem.id; mergedMap.set(nameKey, item); } 
+            else { uniqueTimeCounter++; item.id = uniqueTimeCounter; mergedMap.set(nameKey, item); }
+        }
+    });
+    return Array.from(mergedMap.values());
 }
