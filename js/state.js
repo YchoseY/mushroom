@@ -35,17 +35,20 @@ function saveState() {
     const container = document.getElementById('tracker-container');
     if (!container) return;
     
-    // ✨ 修正點：不論卡片有沒有 is-respawned 類別，通通都要掃描並打包！
     const cards = document.querySelectorAll('.card'); 
     const data = [];
+    
+    // 讀取目前的底層資料，當作安全基底
+    let currentDb = [];
+    try { currentDb = JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch(e){}
     
     cards.forEach(card => {
         const id = card.id.replace('card-', ''); 
         const nameEl = document.getElementById(`name-${id}`);
         
-        // 🎯 100% 精準抓取下拉選單目前的真實選擇
-        const zoneEl = document.getElementById(`zone-${id}`);
-        const zoneVal = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
+        // 優先從現有的底層資料庫或 dataset 裡抓取已經被鎖定的 zone 血統
+        const oldItem = currentDb.find(x => x.id == id);
+        const zoneVal = card.dataset.zone || (oldItem && oldItem.zone ? oldItem.zone : 'all');
 
         if (nameEl) { 
             data.push({ 
@@ -54,7 +57,7 @@ function saveState() {
                 min: document.getElementById(`m-${id}`) ? document.getElementById(`m-${id}`).value : "", 
                 sec: document.getElementById(`s-${id}`) ? document.getElementById(`s-${id}`).value : "", 
                 targetTime: card.dataset.respawnTime,
-                zone: zoneVal // 🚀 確保百分之百寫入陣列物件中！
+                zone: zoneVal
             }); 
         }
     });
