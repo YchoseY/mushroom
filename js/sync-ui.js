@@ -1,16 +1,17 @@
 // ★ 全獨立定時巡邏雲端模組 (100% 不撞車、不影響原廠 onload 渲染)
 const MY_GAS_API_URL = "https://script.google.com/macros/s/AKfycbzzCL1Bin86sj4yvtSeF2n_dMF7LDHB_EbDJI2zX4DUFI0FMidnfX1V-wco1tLGFahP/exec"; 
 const SYNC_KEY_STORAGE = 'pikmin_cloud_sync_6_char_key';
+// 紀錄目前面板是展開還是收合狀態，預設為收合 (false)
+let isCloudPanelExpanded = false;
 
-// 🎯 改用每 0.5 秒巡邏一次的定時器，直到原本網頁的 <h2> 長出來後，才優雅地把面板塞進去
-// 這樣做 100% 避開 window.onload 衝突，原本的菇點與功能絕對不會再被弄壞！
+// 🎯 定時巡邏，當 <h2> 出現就注入面板
 let uiCheckTimer = setInterval(() => {
     const h2El = document.querySelector("h2");
     if (h2El) {
-        clearInterval(uiCheckTimer); // 抓到了！立刻停止巡邏
-        initCloudSyncSystem(h2El);   // 啟動雲端面板
+        clearInterval(uiCheckTimer);
+        initCloudSyncSystem(h2El);
     }
-}, 500);
+}, 300);
 
 function getStoredSyncKey() {
     const key = localStorage.getItem(SYNC_KEY_STORAGE);
@@ -20,16 +21,23 @@ function getStoredSyncKey() {
 function initCloudSyncSystem(h2El) {
     if (document.getElementById("cloud-sync-panel")) return;
     
-    // 在 <h2> 下方動態長出淡藍色控制面板
     const panel = document.createElement("div");
     panel.id = "cloud-sync-panel";
-    panel.style = "background: #f0f7ff; border: 1px solid #d0e3ff; padding: 12px; border-radius: 8px; margin: 10px auto 15px auto; max-width: 500px; text-align: center; font-size: 0.9rem; font-family: sans-serif; box-sizing: border-box;";
+    // 🎨 加入 cursor: pointer 讓整條橫幅都可以點擊，並加入 transition 達成絲滑收合動畫
+    panel.style = "background: #f0f7ff; border: 1px solid #d0e3ff; padding: 10px 12px; border-radius: 8px; margin: 10px auto 15px auto; max-width: 500px; font-size: 0.9rem; font-family: sans-serif; box-sizing: border-box; cursor: pointer; transition: all 0.3s ease-in-out; position: relative; box-shadow: 0 2px 6px rgba(37,117,252,0.05);";
+    
+    // 點擊面板任一處時，觸發切換折疊狀態
+    panel.onclick = function(e) {
+        // 防呆：如果使用者是點擊到裡面的按鈕或輸入框，不要觸發收合
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+        toggleCloudPanel();
+    };
+
     h2El.parentNode.insertBefore(panel, h2El.nextSibling);
     
     updateSyncUiStatus();
     loadCloudDataOnInit();
 
-    // 攔截原本健康的 saveState
     if (typeof window.saveState === "function") {
         const originalSaveState = window.saveState;
         window.saveState = function() {
@@ -39,47 +47,85 @@ function initCloudSyncSystem(h2El) {
     }
 }
 
-// 介面按鈕與狀態切換
+// 🔄 切換展開/收合狀態
+function toggleCloudPanel() {
+    isCloudPanelExpanded = !isCloudPanelExpanded;
+    updateSyncUiStatus();
+}
+
+// 核心：動態渲染面板內部（平時只保留第一行，展開才露出按鈕群）
 function updateSyncUiStatus() {
     const panel = document.getElementById("cloud-sync-panel");
     if (!panel) return;
     
     const currentKey = getStoredSyncKey();
+    const arrow = isCloudPanelExpanded ? "▵" : "▿";
+    
+    // 建立基礎的第一行內容（膠囊外殼）
+    let htmlContent = "";
+    
     if (currentKey) {
-        panel.innerHTML = `
-            <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
-                🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-weight:bold; font-size:1.05rem;">${currentKey}</span> 】
-            </div>
-            <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:6px;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
-            <div style="display:flex; justify-content:center; gap:8px;">
-                <button onclick="forceManualSync()" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
-                    🔄 手動同步/刷新
-                </button>
-                <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                    ❌ 解除雲端綁定
-                </button>
+        htmlContent = `
+            <div style="font-weight: bold; color: #333; display: flex; justify-content: center; align-items: center; gap: 6px; user-select: none;">
+                🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-weight:bold; font-size:1.02rem;">${currentKey}</span> 】
+                <span style="color: #888; font-size: 0.8rem; margin-left: 4px;">${arrow}</span>
             </div>
         `;
     } else {
-        panel.innerHTML = `
-            <div style="font-weight: bold; color: #333; margin-bottom: 8px;">
+        htmlContent = `
+            <div style="font-weight: bold; color: #555; display: flex; justify-content: center; align-items: center; gap: 6px; user-select: none;">
                 ⚪ 雲端狀態：單機模式 (資料僅存於此手機)
-            </div>
-            <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:4px; margin-top:5px;">
-                <button onclick="generateNewSyncKey()" style="background: #2575fc; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
-                    🔗 產生同步金鑰
-                </button>
-                <span style="color: #ccc; margin: 0 4px;">|</span>
-                <input type="text" id="sync-input-field" placeholder="輸入6碼金鑰" maxlength="10" style="width: 100px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box;">
-                <button onclick="triggerUiBinding()" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
-                    🤝 連線綁定
-                </button>
+                <span style="color: #888; font-size: 0.8rem; margin-left: 4px;">${arrow}</span>
             </div>
         `;
     }
+    
+    // 🛠️ 根據目前是展開還是收合，決定要不要灌入下方的操作區塊
+    if (isCloudPanelExpanded) {
+        // 面板加深底色，提示使用者目前在設定狀態
+        panel.style.background = "#e6f2ff";
+        panel.style.borderColor = "#b3d7ff";
+        
+        if (currentKey) {
+            htmlContent += `
+                <div style="border-top: 1px dashed #d0e3ff; margin-top: 8px; padding-top: 8px; animation: fadeIn 0.2s ease-out;">
+                    <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:8px;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
+                    <div style="display:flex; justify-content:center; gap:8px;">
+                        <button onclick="forceManualSync()" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
+                            🔄 手動同步/刷新
+                        </button>
+                        <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                            ❌ 解除雲端綁定
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            htmlContent += `
+                <div style="border-top: 1px dashed #d0e3ff; margin-top: 8px; padding-top: 8px; animation: fadeIn 0.2s ease-out;">
+                    <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <button onclick="generateNewSyncKey()" style="background: #2575fc; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                            🔗 產生同步金鑰
+                        </button>
+                        <span style="color: #ccc; margin: 0 4px;">|</span>
+                        <input type="text" id="sync-input-field" placeholder="輸入6碼金鑰" maxlength="10" style="width: 100px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box;">
+                        <button onclick="triggerUiBinding()" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                            🤝 連線綁定
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    } else {
+        // 收合時恢復原本清爽的淺藍色
+        panel.style.background = "#f0f7ff";
+        panel.style.borderColor = "#d0e3ff";
+    }
+    
+    panel.innerHTML = htmlContent;
 }
 
-// 開機拉取
+// 開機自動拉取雲端
 function loadCloudDataOnInit() {
     const syncKey = getStoredSyncKey();
     if (!syncKey || !MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return;
@@ -95,10 +141,10 @@ function loadCloudDataOnInit() {
             localStorage.setItem('pikmin_mushroom_final_database', resData.data);
             if (typeof renderLoadedData === "function") renderLoadedData(resData.data);
         }
-    }).catch(err => console.log("雲端加載略過", err));
+    }).catch(err => console.log("雲端自動加載略過", err));
 }
 
-// 背景上傳
+// 背景默默同步上傳
 function uploadToCloudBackground() {
     const syncKey = getStoredSyncKey();
     if (!syncKey || !MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return;
@@ -123,10 +169,10 @@ function uploadToCloudBackground() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalArray) })
         });
-    }).catch(err => console.log("備份同步略過", err));
+    }).catch(err => console.log("背景同步略過", err));
 }
 
-// 強制手動同步
+// 🔄 按鈕：手動智慧融合刷新（完畢後自動防呆收合）
 function forceManualSync() {
     const syncKey = getStoredSyncKey();
     if (!syncKey) return;
@@ -156,11 +202,13 @@ function forceManualSync() {
             body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalArray) })
         }).then(() => {
             alert("🚀 雲端三方智慧融合與同步刷新成功！");
+            isCloudPanelExpanded = false; // 🎯 自動收合
+            updateSyncUiStatus();
         });
     }).catch(() => alert("❌ 刷新失敗，請確認網路連線。"));
 }
 
-// 產生 6 碼
+// 🔗 按鈕：產生金鑰（完畢後自動防呆收合）
 function generateNewSyncKey() {
     if (!MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return alert("❌ 請填入正確的 API 網址！");
     
@@ -188,13 +236,14 @@ function generateNewSyncKey() {
                 body: JSON.stringify({ action: "save", key: resultKey, data: localData })
             }).then(() => {
                 alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
+                isCloudPanelExpanded = false; // 🎯 自動收合
                 updateSyncUiStatus();
             });
         }
     }).catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
 }
 
-// 連結金鑰
+// 🤝 按鈕：連線綁定與純名稱摘要（完畢後自動防呆收合）
 function triggerUiBinding() {
     const inputEl = document.getElementById("sync-input-field");
     if (!inputEl || !inputEl.value.trim()) return alert("請輸入有效的 6 碼金鑰！");
@@ -214,12 +263,14 @@ function triggerUiBinding() {
             if (cloudArray.length === 0) {
                 if (confirm(`💡 您輸入的金鑰【 ${cleanKey} 】目前在雲端無任何菇點紀錄。\n\n點擊「確定」將會把此裝置目前的菇點綁定上傳。`)) {
                     localStorage.setItem(SYNC_KEY_STORAGE, cleanKey);
+                    isCloudPanelExpanded = false; // 🎯 自動收合
                     updateSyncUiStatus();
                     uploadToCloudBackground();
                 }
                 return;
             }
             
+            // 🛡️ 精準防漏：只擷取純名稱摘要
             const nameList = cloudArray
                 .map(item => item.name ? item.name.trim() : "")
                 .filter(name => name !== "")
@@ -246,6 +297,7 @@ function triggerUiBinding() {
                     body: JSON.stringify({ action: "save", key: cleanKey, data: JSON.stringify(finalMerged) })
                 }).then(() => {
                     alert("✅ 雲端智慧同步綁定成功！");
+                    isCloudPanelExpanded = false; // 🎯 自動收合
                     updateSyncUiStatus();
                 });
             }
@@ -257,6 +309,7 @@ function unlinkSyncKey() {
     if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留。")) {
         localStorage.removeItem(SYNC_KEY_STORAGE);
         alert("已成功退回本地單機模式！");
+        isCloudPanelExpanded = false; // 🎯 自動收合
         updateSyncUiStatus();
     }
 }
@@ -274,3 +327,8 @@ function uiModuleMerge(localArray, remoteArray) {
     });
     return Array.from(mergedMap.values());
 }
+
+// 注入微型動畫 CSS 效果
+const styleSheet = document.createElement("style");
+styleSheet.innerText = `@keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }`;
+document.head.appendChild(styleSheet);
