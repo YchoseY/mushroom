@@ -123,7 +123,7 @@ function resumeTracking(id, targetTime) {
     card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');
     if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
     if (timers[id]) clearInterval(timers[id]);
-    const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (typeof updateCountdown === 'function') {
         updateCountdown(id, targetTime, timeString); 
         timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
