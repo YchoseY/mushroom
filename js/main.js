@@ -1,4 +1,4 @@
-// ★ 核心打菇戰情大腦 - 隱形歸檔與解除凍結修正版
+// ★ 核心打菇戰情大腦 - 隱形歸檔與解除凍結修正完全體
 
 // ★ 精準通知授權盾：讓使用者點擊最上方的「🍄 皮克敏蘑菇戰情板」標題時，100% 強制逼出 iPhone 通知詢問視窗
 document.addEventListener("DOMContentLoaded", () => { const h2 = document.querySelector("h2"); if (h2) { h2.style.cursor = "pointer"; h2.onclick = () => { if ("Notification" in window) { Notification.requestPermission().then(permission => { alert(`通知權限狀態：${permission} (若為 granted 代表成功開通！)`); }); } }; } });
@@ -46,11 +46,10 @@ function switchZoneTab(zoneKey) {
     filterUiByCurrentZone();
 }
 
-// 🔍 核心過濾邏輯：修正已重生卡片強制隱形、未開始/進行中卡片進行分類
+// 🔍 核心過濾邏輯：控制卡片與歷史標籤的隱形/現身
 function filterUiByCurrentZone() {
     const cards = document.querySelectorAll('.card');
     cards.forEach(card => {
-        // ✨ 修正點 1：不論停在哪个分頁，只要是「已重生」的卡片，一律強制隱形不留存於下方！
         if (card.classList.contains('is-respawned')) {
             card.style.setProperty('display', 'none', 'important');
             return;
@@ -60,7 +59,6 @@ function filterUiByCurrentZone() {
         const zoneEl = document.getElementById(`zone-${id}`);
         const cardZone = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
 
-        // ✨ 修正點 2：只有未開始、正在進行中且符合當前分頁的卡片才允許現身
         if (currentActiveZone === 'all' || cardZone === currentActiveZone) {
             card.style.setProperty('display', 'flex', 'important');
         } else {
@@ -94,12 +92,12 @@ function updateCountdown(id, targetTime, timeString) {
     }
     
     if (diff <= 0) {
-        if (timers[id]) clearInterval(timers[id]);[cite: 2]
-        resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;[cite: 2]
+        if (timers[id]) clearInterval(timers[id]);
+        resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
         if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity" && !card.classList.contains('ocr-confirming')) { 
-            card.classList.add('is-respawned');[cite: 2]
+            card.classList.add('is-respawned');
             renderRespawnBadges(); 
-            filterUiByCurrentZone(); // 🚀 即時觸發過濾，把卡片抽走隱形
+            filterUiByCurrentZone(); 
         }
         return;
     }
@@ -135,24 +133,29 @@ function updateCountdown(id, targetTime, timeString) {
 function addMushroom(data = null) {
     const container = document.getElementById('tracker-container');
     if(!container) return;
-    const id = data ? data.id : Date.now();[cite: 2]
+    const id = data ? data.id : Date.now();
     const card = document.createElement('div');
     card.className = 'card'; card.id = `card-${id}`;
-    card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity;[cite: 2]
+    card.dataset.respawnTime = data && data.targetTime ? data.targetTime : Infinity;
     card.dataset.zone = data && data.zone ? data.zone : 'all'; 
 
-    // 如果該卡片已經是歷史重生狀態，先手動給它加上 is-respawned 類別
     const targetTimeNum = data && data.targetTime ? parseFloat(data.targetTime) : Infinity;
     if (targetTimeNum !== Infinity && targetTimeNum <= Date.now()) {
         card.classList.add('is-respawned');
     }
 
+    // ✨ 語法修正點：徹底重寫並修正三元運算子 missing ] 錯誤
+    const isAll = (data && data.zone === 'all') || !data ? 'selected' : '';
+    const isHome = data && data.zone === 'home' ? 'selected' : '';
+    const isOffice = data && data.zone === 'office' ? 'selected' : '';
+    const isTravel = data && data.zone === 'travel' ? 'selected' : '';
+
     const zoneSelectHtml = `
         <select id="zone-${id}" onchange="saveState(); filterUiByCurrentZone();" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
-            <option value="all" ${(data && data.zone==='all')||!data?'selected':''}>🌐</option>
-            <option value="home" ${data && data.zone==='home'?'selected':''}>🏠</option>
-            <option value="office" ${data && data.zone==='office'?'selected':''}>🏢</option>
-            <option value="travel" ${data && data.zone==='travel'?'selected':''}>🗺️</option>
+            <option value="all" ${isAll}>🌐</option>
+            <option value="home" ${isHome}>🏠</option>
+            <option value="office" ${isOffice}>🏢</option>
+            <option value="travel" ${isTravel}>🗺️</option>
         </select>
     `;
     
@@ -169,13 +172,11 @@ function addMushroom(data = null) {
             <button class="btn-delete" id="del-${id}" onclick="removeMushroom('${id}')">✕</button>
         </div>
     `;
-    container.appendChild(card); attachEvents(id); updateButtonText(id);[cite: 2]
+    container.appendChild(card); attachEvents(id); updateButtonText(id);
     
-    // ✨ 修正點 3：只有「未重生、仍在未來倒數中」的卡片才予以凍結；已重生的卡片保持開放修改狀態
     if (data && data.targetTime && data.targetTime !== "Infinity" && targetTimeNum > Date.now()) { 
         resumeTracking(id, parseInt(data.targetTime)); 
     } else {
-        // 已重生的卡片，UI 顯示「已重生！」字樣，但不准凍結輸入框
         const resDiv = document.getElementById(`res-${id}`);
         if (resDiv) resDiv.innerHTML = `<span class="countdown" style="color:#2ecc71;">已重生！</span>`;
         if (!data) { saveState(); }
@@ -186,18 +187,18 @@ function addMushroom(data = null) {
 function updateButtonText(id) {
     const btnCalc = document.getElementById(`btn-${id}`); const btnDel = document.getElementById(`del-${id}`);
     if (!btnCalc || !btnDel) return;
-    if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }[cite: 2]
+    if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }
 }
 
 function attachEvents(id) {
     const nameInput = document.getElementById(`name-${id}`); const minInput = document.getElementById(`m-${id}`); const secInput = document.getElementById(`s-${id}`); const btnCalc = document.getElementById(`btn-${id}`);
     if(!nameInput) return;
-    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});[cite: 2]
-    minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});[cite: 2]
-    secInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); btnCalc.click(); }});[cite: 2]
-    minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });[cite: 2]
-    secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });[cite: 2]
-    nameInput.addEventListener('change', saveState);[cite: 2]
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); minInput.focus(); }});
+    minInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); secInput.focus(); }});
+    secInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); btnCalc.click(); }});
+    minInput.addEventListener('focus', () => { setTimeout(() => { minInput.select(); }, 10); });
+    secInput.addEventListener('focus', () => { setTimeout(() => { secInput.select(); }, 10); });
+    nameInput.addEventListener('change', saveState);
     minInput.addEventListener('change', saveState);
     secInput.addEventListener('change', saveState);
 }
@@ -207,8 +208,8 @@ function ensureEmptyRow(shouldFocus = false) {
     let hasTrueEmptyRow = false; let emptyCardId = null;
     for (let card of cards) {
         const id = card.id.replace('card-', '');
-        const nameVal = document.getElementById(`name-${id}`).value.trim(); const minVal = document.getElementById(`m-${id}`).value.trim(); const secVal = document.getElementById(`s-${id}`).value.trim();[cite: 2]
-        if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") { hasTrueEmptyRow = true; emptyCardId = id; break; }[cite: 2]
+        const nameVal = document.getElementById(`name-${id}`).value.trim(); const minVal = document.getElementById(`m-${id}`).value.trim(); const secVal = document.getElementById(`s-${id}`).value.trim();
+        if (card.dataset.respawnTime === "Infinity" && nameVal === "" && minVal === "" && secVal === "") { hasTrueEmptyRow = true; emptyCardId = id; break; }
     }
     if (!hasTrueEmptyRow) { 
         const defaultZone = currentActiveZone === 'all' ? 'all' : currentActiveZone;
@@ -217,15 +218,15 @@ function ensureEmptyRow(shouldFocus = false) {
     if (shouldFocus && emptyCardId) { 
         setTimeout(() => { 
             const nameInput = document.getElementById(`name-${emptyCardId}`); 
-            if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }[cite: 2]
+            if (nameInput) { nameInput.focus(); nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             filterUiByCurrentZone(); 
         }, 100); 
     }
 }
 
 function startTracking(id) {
-    const min = parseInt(document.getElementById(`m-${id}`).value) || 0; const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;[cite: 2]
-    if (min === 0 && sec === 0) { return; }[cite: 2]
+    const min = parseInt(document.getElementById(`m-${id}`).value) || 0; const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
+    if (min === 0 && sec === 0) { return; }
     
     const offsetEl = document.getElementById('app-launch-offset');
     const offset = offsetEl ? parseInt(offsetEl.value) || 0 : 3;
@@ -233,15 +234,14 @@ function startTracking(id) {
     const now = Date.now(); 
     const targetTime = now + (((min * 60) + sec + (300 - offset)) * 1000);
     
-    delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);[cite: 2]
+    delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
 }
 
 function resumeTracking(id, targetTime) {
-    const card = document.getElementById('card-' + id); if (!card) return;[cite: 2]
-    card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');[cite: 2]
-    if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }[cite: 2]
+    const card = document.getElementById('card-' + id); if (!card) return;
+    card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');
+    if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
     
-    // 進入倒數時才凍結
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
     const secInput = document.getElementById(`s-${id}`);
@@ -255,63 +255,63 @@ function resumeTracking(id, targetTime) {
     const btnCalc = document.getElementById(`btn-${id}`);
     if (btnCalc) btnCalc.style.display = 'none';
 
-    if (timers[id]) clearInterval(timers[id]);[cite: 2]
-    const respawnDate = new Date(targetTime);[cite: 2]
-    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });[cite: 2]
+    if (timers[id]) clearInterval(timers[id]);
+    const respawnDate = new Date(targetTime); 
+    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (typeof updateCountdown === 'function') {
         updateCountdown(id, targetTime, timeString); 
-        timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);[cite: 2]
+        timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
     }
 }
 
 function removeMushroom(id) {
-    if (id.startsWith('OCR_')) { if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); return; }[cite: 2]
-    if (timers[id]) clearInterval(timers[id]);[cite: 2]
-    delete notifiedItems[id]; const card = document.getElementById(`card-${id}`); if (card) card.remove();[cite: 2]
+    if (id.startsWith('OCR_')) { if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); return; }
+    if (timers[id]) clearInterval(timers[id]);
+    delete notifiedItems[id]; const card = document.getElementById(`card-${id}`); if (card) card.remove();
     saveState(); renderRespawnBadges(); filterUiByCurrentZone(); 
 }
 
 function removeCard(id) { removeMushroom(id); }
 
 function sortMushrooms() {
-    const container = document.getElementById('tracker-container'); if (!container) return;[cite: 2]
-    const cards = Array.from(container.getElementsByClassName('card'));[cite: 2]
+    const container = document.getElementById('tracker-container'); if (!container) return;
+    const cards = Array.from(container.getElementsByClassName('card'));
     cards.sort((a, b) => {
-        if (a.classList.contains('ocr-confirming') && !b.classList.contains('ocr-confirming')) return -1;[cite: 2]
-        if (!a.classList.contains('ocr-confirming') && b.classList.contains('ocr-confirming')) return 1;[cite: 2]
-        return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime);[cite: 2]
+        if (a.classList.contains('ocr-confirming') && !b.classList.contains('ocr-confirming')) return -1;
+        if (!a.classList.contains('ocr-confirming') && b.classList.contains('ocr-confirming')) return 1;
+        return parseFloat(a.dataset.respawnTime) - parseFloat(b.dataset.respawnTime);
     });
-    cards.forEach(card => container.appendChild(card));[cite: 2]
+    cards.forEach(card => container.appendChild(card));
 }
 
 function renderRespawnBadges() {
-    const wrapper = document.getElementById('respawn-area-wrapper'); if (!wrapper) return;[cite: 2]
-    const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); const respawnedItems = [];[cite: 2]
+    const wrapper = document.getElementById('respawn-area-wrapper'); if (!wrapper) return;
+    const cards = Array.from(document.querySelectorAll('.card:not(.ocr-confirming)')); const respawnedItems = [];
     cards.forEach(card => {
-        const id = card.id.replace('card-', ''); const targetTime = parseFloat(card.dataset.respawnTime); const nameVal = document.getElementById(`name-${id}`).value.trim();[cite: 2]
+        const id = card.id.replace('card-', ''); const targetTime = parseFloat(card.dataset.respawnTime); const nameVal = document.getElementById(`name-${id}`).value.trim();
         const zoneEl = document.getElementById(`zone-${id}`);
         const itemZone = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
-        if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { respawnedItems.push({ id, name: nameVal, targetTime, zone: itemZone }); }[cite: 2]
+        if (card.classList.contains('is-respawned') && targetTime !== Infinity && nameVal !== "") { respawnedItems.push({ id, name: nameVal, targetTime, zone: itemZone }); }
     });
-    respawnedItems.sort((a, b) => b.targetTime - a.targetTime);[cite: 2]
-    if (respawnedItems.length === 0) { wrapper.innerHTML = ""; return; }[cite: 2]
-    const toggleText = isRespawnSectionCollapsed ? `展開 (${respawnedItems.length}) ▾` : "隱藏收合 ▴";[cite: 2]
-    wrapper.innerHTML = `<div class="respawn-header-row"><span>🍄 已重生歷史菇點：</span><button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button></div><div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>`;[cite: 2]
-    const badgeContainer = document.getElementById('respawn-badge-container');[cite: 2]
+    respawnedItems.sort((a, b) => b.targetTime - a.targetTime);
+    if (respawnedItems.length === 0) { wrapper.innerHTML = ""; return; }
+    const toggleText = isRespawnSectionCollapsed ? `展開 (${respawnedItems.length}) ▾` : "隱藏收合 ▴";
+    wrapper.innerHTML = `<div class="respawn-header-row"><span>🍄 已重生歷史菇點：</span><button class="btn-toggle-respawn" onclick="toggleRespawnContainer()">${toggleText}</button></div><div id="respawn-badge-container" class="${isRespawnSectionCollapsed ? 'collapsed' : ''}"></div>`;
+    const badgeContainer = document.getElementById('respawn-badge-container');
     respawnedItems.forEach(item => {
         const badge = document.createElement('div'); badge.className = 'badge-item'; 
         badge.dataset.zone = item.zone; 
         badge.innerHTML = `${item.name}`; 
-        badge.onclick = () => activateRespawnedCard(item.id); badgeContainer.appendChild(badge);[cite: 2]
+        badge.onclick = () => activateRespawnedCard(item.id); badgeContainer.appendChild(badge);
     });
     filterUiByCurrentZone(); 
 }
 
-function toggleRespawnContainer() { isRespawnSectionCollapsed = !isRespawnSectionCollapsed; renderRespawnBadges(); }[cite: 2]
+function toggleRespawnContainer() { isRespawnSectionCollapsed = !isRespawnSectionCollapsed; renderRespawnBadges(); }
 
 function activateRespawnedCard(id) {
-    const card = document.getElementById(`card-${id}`); if (!card) return;[cite: 2]
-    card.classList.remove('is-respawned');[cite: 2]
+    const card = document.getElementById(`card-${id}`); if (!card) return;
+    card.classList.remove('is-respawned');
     
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
@@ -326,16 +326,16 @@ function activateRespawnedCard(id) {
     if (btnCalc) btnCalc.style.display = 'inline-block';
     
     renderRespawnBadges();
-    setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);[cite: 2]
+    setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);
 }
 
 function calculateAppStartSuggestion(totalRemainingSec) {
     const offsetEl = document.getElementById('app-launch-offset');
     const baseOffset = offsetEl ? parseInt(offsetEl.value) || 0 : 3;
-    if (totalRemainingSec < baseOffset) return null;[cite: 2]
-    const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);[cite: 2]
-    if (maxN < 0) return null;[cite: 2]
-    return baseOffset + (8 * maxN);[cite: 2]
+    if (totalRemainingSec < baseOffset) return null;
+    const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
+    if (maxN < 0) return null;
+    return baseOffset + (8 * maxN);
 }
 
 window.addEventListener('resize', () => {
@@ -346,5 +346,18 @@ window.addEventListener('resize', () => {
     });
 });
 
-// 🕰️ 常駐計時器：每秒重新整理倒數
-setInterval(updateCountdown, 1000);
+// 🕰️ 全域常駐每秒更新
+setInterval(() => {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        if (!card.classList.contains('is-respawned') && card.dataset.respawnTime !== "Infinity") {
+            const id = card.id.replace('card-', '');
+            if (timers[id]) {
+                const targetTime = parseFloat(card.dataset.respawnTime);
+                const respawnDate = new Date(targetTime);
+                const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                updateCountdown(id, targetTime, timeString);
+            }
+        }
+    });
+}, 1000);
