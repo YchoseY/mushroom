@@ -1,16 +1,14 @@
-// ★ 雲端同步介面與大腦完全體控制器
+// ★ 雲端同步介面與大腦修復完全體
 document.addEventListener("DOMContentLoaded", () => {
     updateSyncUiStatus();
 });
 
-// 核心：全自動刷新畫面上的雲端狀態與面板按鈕
 function updateSyncUiStatus() {
     const statusTextEl = document.getElementById("sync-status-text");
     const actionsRowEl = document.getElementById("sync-actions-row");
     
     if (!statusTextEl) return;
     
-    // 從 state.js 裡抓取目前本地有沒有記住金鑰
     const currentKey = typeof getStoredSyncKey === "function" ? getStoredSyncKey() : null;
     
     if (currentKey) {
@@ -45,7 +43,6 @@ function updateSyncUiStatus() {
     }
 }
 
-// 驅動第二台裝置連線的 UI 橋樑
 function triggerUiBinding() {
     const inputEl = document.getElementById("sync-input-field");
     if (!inputEl) return;
@@ -59,7 +56,6 @@ function triggerUiBinding() {
     bindExistingSyncKey(val);
 }
 
-// 解除綁定（回復成單機本地模式）
 function unlinkSyncKey() {
     if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留在手機上。")) {
         localStorage.removeItem('pikmin_cloud_sync_6_char_key'); 
@@ -68,7 +64,6 @@ function unlinkSyncKey() {
     }
 }
 
-// 強制手動刷新與同步
 function forceManualSync() {
     if (typeof saveState === 'function') {
         saveState(); 
@@ -76,12 +71,11 @@ function forceManualSync() {
     }
 }
 
-// 【接管功能一】：一鍵生成 6 碼（自帶雲端查重功能）
 function generateNewSyncKey() {
     if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
     
     if (typeof getStoredSyncKey === "function" && getStoredSyncKey()) {
-        if(!confirm(`⚠️ 您目前已經綁定過金鑰【 ${getStoredSyncKey()} 】了。\n重新生成將會脫離目前的雲端房間，確定要重新生成嗎？`)) return;
+        if(!confirm(`⚠️ 您目前已經綁定過金鑰了。\n重新生成將會脫離目前的雲端房間，確定要重新生成嗎？`)) return;
     }
 
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -109,8 +103,8 @@ function generateNewSyncKey() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ action: "save", key: resultKey, data: localData })
                 }).then(() => {
-                    alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】\n\n💡 請將此 6 碼記下來。在其他裝置輸入此金鑰即可完美跨裝置同步！`);
-                    updateSyncUiStatus(); // 🛠️ 現地直接刷爆 UI 面板，絕不重新整理！
+                    alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
+                    updateSyncUiStatus(); 
                     if (typeof saveState === "function") saveState(); 
                 });
             }
@@ -121,7 +115,6 @@ function generateNewSyncKey() {
     loopCreateAndCheck();
 }
 
-// 【接管功能二】：輸入金鑰連線（觸發純名稱摘要防錯盾）
 function bindExistingSyncKey(inputRawKey) {
     if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
     if (!inputRawKey) return alert("請輸入有效的 6 碼金鑰！");
