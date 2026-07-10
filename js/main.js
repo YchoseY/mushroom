@@ -150,12 +150,13 @@ function addMushroom(data = null) {
     const isOffice = data && data.zone === 'office' ? 'selected' : '';
     const isTravel = data && data.zone === 'travel' ? 'selected' : '';
 
+    // 🏡 建立具備防搶刷、死鎖記憶的生活圈下拉選單
     const zoneSelectHtml = `
-        <select id="zone-${id}" onchange="saveState(); filterUiByCurrentZone();" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
-            <option value="all" ${isAll}>🌐</option>
-            <option value="home" ${isHome}>🏠</option>
-            <option value="office" ${isOffice}>🏢</option>
-            <option value="travel" ${isTravel}>🗺️</option>
+        <select id="zone-${id}" onchange="document.getElementById('card-${id}').dataset.zone = this.value; saveState(); if(typeof uploadToCloudBackground === 'function'){ uploadToCloudBackground(); } filterUiByCurrentZone();" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
+            <option value="all" ${(data && data.zone==='all')||!data?'selected':''}>🌐</option>
+            <option value="home" ${data && data.zone==='home'?'selected':''}>🏠</option>
+            <option value="office" ${data && data.zone==='office'?'selected':''}>🏢</option>
+            <option value="travel" ${data && data.zone==='travel'?'selected':''}>🗺️</option>
         </select>
     `;
     
