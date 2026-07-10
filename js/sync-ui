@@ -1,26 +1,25 @@
-// ★ 雲端同步介面全自動控制器
+// ★ 雲端同步介面與大腦完全體控制器
 document.addEventListener("DOMContentLoaded", () => {
     updateSyncUiStatus();
 });
 
-// 全自動刷新畫面上的雲端狀態與面板
+// 核心：全自動刷新畫面上的雲端狀態與面板按鈕
 function updateSyncUiStatus() {
     const statusTextEl = document.getElementById("sync-status-text");
     const actionsRowEl = document.getElementById("sync-actions-row");
     
     if (!statusTextEl) return;
     
-    // 從 state.js 裡抓取目前有沒有綁定金鑰
+    // 從 state.js 裡抓取目前本地有沒有記住金鑰
     const currentKey = typeof getStoredSyncKey === "function" ? getStoredSyncKey() : null;
     
     if (currentKey) {
         statusTextEl.innerHTML = `🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-weight:bold; font-size:1.05rem;">${currentKey}</span> 】`;
-        // 已綁定成功，把輸入框和按鈕收起來，改成「解除綁定」與日常手動強制同步按鈕
         if (actionsRowEl) {
             actionsRowEl.innerHTML = `
                 <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:6px;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
                 <div style="display:flex; justify-content:center; gap:8px;">
-                    <button onclick="if(typeof saveState==='function'){saveState(); alert('🚀 已強制將目前畫面菇點與雲端進行三方智慧融合！');}" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
+                    <button onclick="forceManualSync()" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
                         🔄 手動同步/刷新
                     </button>
                     <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
@@ -57,9 +56,7 @@ function triggerUiBinding() {
         return;
     }
     
-    if (typeof bindExistingSyncKey === "function") {
-        bindExistingSyncKey(val);
-    }
+    bindExistingSyncKey(val);
 }
 
 // 解除綁定（回復成單機本地模式）
@@ -71,38 +68,127 @@ function unlinkSyncKey() {
     }
 }
 
-// 🎯 覆寫原本的產生按鈕動作，確保在跳出金鑰的瞬間，介面同步刷新，並補足一次存檔
-const originalGenerateNewSyncKey = window.generateNewSyncKey;
-window.generateNewSyncKey = function() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let resultKey = "PKM";
-    for (let i = 0; i < 3; i++) { resultKey += chars.charAt(Math.floor(Math.random() * chars.length)); }
-    
+// 強制手動刷新與同步
+function forceManualSync() {
+    if (typeof saveState === 'function') {
+        saveState(); 
+        alert('🚀 已強制將目前畫面菇點與雲端進行三方智慧融合！');
+    }
+}
+
+// 【接管功能一】：一鍵生成 6 碼（自帶雲端查重功能）
+function generateNewSyncKey() {
     if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
+    
+    if (typeof getStoredSyncKey === "function" && getStoredSyncKey()) {
+        if(!confirm(`⚠️ 您目前已經綁定過金鑰【 ${getStoredSyncKey()} 】了。\n重新生成將會脫離目前的雲端房間，確定要重新生成嗎？`)) return;
+    }
+
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    
+    function loopCreateAndCheck() {
+        let resultKey = "PKM"; 
+        for (let i = 0; i < 3; i++) { resultKey += chars.charAt(Math.floor(Math.random() * chars.length)); }
+        
+        fetch(GAS_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ action: "check_duplicate", key: resultKey })
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === "success" && resData.exists === true) {
+                loopCreateAndCheck(); 
+            } else {
+                localStorage.setItem('pikmin_cloud_sync_6_char_key', resultKey);
+                const localData = localStorage.getItem('pikmin_mushroom_final_database') || "[]";
+                
+                fetch(GAS_API_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "save", key: resultKey, data: localData })
+                }).then(() => {
+                    alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】\n\n💡 請將此 6 碼記下來。在其他裝置輸入此金鑰即可完美跨裝置同步！`);
+                    updateSyncUiStatus(); // 🛠️ 現地直接刷爆 UI 面板，絕不重新整理！
+                    if (typeof saveState === "function") saveState(); 
+                });
+            }
+        })
+        .catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
+    }
+    
+    loopCreateAndCheck();
+}
+
+// 【接管功能二】：輸入金鑰連線（觸發純名稱摘要防錯盾）
+function bindExistingSyncKey(inputRawKey) {
+    if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
+    if (!inputRawKey) return alert("請輸入有效的 6 碼金鑰！");
+    
+    const cleanKey = inputRawKey.trim().toUpperCase();
     
     fetch(GAS_API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "check_duplicate", key: resultKey })
+        body: JSON.stringify({ action: "load", key: cleanKey })
     })
     .then(res => res.json())
     .then(resData => {
-        if (resData.status === "success" && resData.exists === true) {
-            window.generateNewSyncKey(); 
-        } else {
-            localStorage.setItem('pikmin_cloud_sync_6_char_key', resultKey);
-            const localData = localStorage.getItem(DB_KEY) || "[]";
+        if (resData.status === "success") {
+            const cloudArray = JSON.parse(resData.data || "[]");
             
-            fetch(GAS_API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "save", key: resultKey, data: localData })
-            }).then(() => {
-                alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
-                updateSyncUiStatus(); // 🛠️ 防線 1：強行立刻更新介面，不再等待 reload 快取
-                if (typeof saveState === "function") saveState(); // 🛠️ 防線 2：強制同步寫入試算表
-            });
+            if (cloudArray.length === 0) {
+                if (confirm(`💡 您輸入的金鑰【 ${cleanKey} 】目前在雲端是「空置的保險箱」（內部無任何菇點紀錄）。\n\n確認這是否為您剛建立的全新金鑰？點擊「確定」將會把此裝置目前的菇點綁定上傳。`)) {
+                    localStorage.setItem('pikmin_cloud_sync_6_char_key', cleanKey);
+                    updateSyncUiStatus();
+                    if (typeof saveState === "function") saveState();
+                }
+                return;
+            }
+            
+            const nameList = cloudArray
+                .map(item => item.name ? item.name.trim() : "")
+                .filter(name => name !== "")
+                .map(name => `📌 ${name}`);
+            
+            const summaryText = nameList.length > 0 ? nameList.join("\n") : "(內含未命名地點紀錄)";
+            
+            const userChoice = confirm(
+                `🔍 雲端同步確認安全盾\n\n` +
+                `已成功在雲端找到該金鑰包含的以下菇點摘要：\n` +
+                `----------------------------------------\n` +
+                `${summaryText}\n` +
+                `----------------------------------------\n` +
+                `⚠️ 請核對：這是否為您另一台裝置的資料？\n\n` +
+                `點擊「確定」將合併兩台裝置的菇點。\n` +
+                `點擊「取消」將中止連線，保護您的資料。`
+            );
+            
+            if (userChoice) {
+                localStorage.setItem('pikmin_cloud_sync_6_char_key', cleanKey);
+                const localString = localStorage.getItem('pikmin_mushroom_final_database');
+                const localArray = localString ? JSON.parse(localString) : [];
+                
+                if (typeof backgroundExecuteMerge === "function") {
+                    const finalMerged = backgroundExecuteMerge(localArray, cloudArray);
+                    localStorage.setItem('pikmin_mushroom_final_database', JSON.stringify(finalMerged));
+                    
+                    fetch(GAS_API_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "save", key: cleanKey, data: JSON.stringify(finalMerged) })
+                    }).then(() => {
+                        alert("✅ 雲端智慧同步綁定成功！裝置已完美交織合併。");
+                        updateSyncUiStatus();
+                        if (typeof loadState === "function") loadState();
+                    });
+                } else {
+                    updateSyncUiStatus();
+                }
+            }
         }
-    }).catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
-};
+    })
+    .catch(err => alert("❌ 金鑰連線查無資料或網路逾時，請重新檢查。"));
+}
