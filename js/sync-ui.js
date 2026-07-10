@@ -47,14 +47,6 @@ function initCloudSyncSystem(h2El) {
     
     updateSyncUiStatus();
     loadCloudDataOnInit();
-
-    if (typeof window.saveState === "function") {
-        const originalSaveState = window.saveState;
-        window.saveState = function() {
-            originalSaveState(); 
-            uploadToCloudBackground(); 
-        };
-    }
 }
 
 // 核心：動態渲染面板內部（確保 id="app-launch-offset" 在收合時也絕對存在）
