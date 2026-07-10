@@ -3,9 +3,27 @@ document.addEventListener("DOMContentLoaded", () => { const h2 = document.queryS
 
 function requestNotificationPermission() { if ("Notification" in window) { Notification.requestPermission(); } }
 
+// ★ 核心修復：精準重寫通知發送語法，完美對齊 iPhone (iOS) PWA 的 Service Worker 推送規範
 function sendWebNotification(title, bodyText) {
     try { document.getElementById('alert-sound').play(); } catch(e){}
-    if ("Notification" in window && Notification.permission === "granted") { new Notification(title, { body: bodyText, icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" }); }
+    
+    if ("Notification" in window && Notification.permission === "granted") {
+        // 🎯 專為 iPhone (iOS) 主畫面環境設計的相容通知發送公式
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(title, {
+                    body: bodyText,
+                    icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png"
+                });
+            });
+        } else {
+            // 傳統電腦、瀏覽器相容模式
+            new Notification(title, { 
+                body: bodyText, 
+                icon: "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Food%20Drink/Mushroom.png" 
+            });
+        }
+    }
 }
 
 function updateCountdown(id, targetTime, timeString) {
@@ -126,7 +144,8 @@ function resumeTracking(id, targetTime) {
     card.dataset.respawnTime = targetTime; card.classList.remove('is-respawned');
     if (targetTime !== Infinity && !card.classList.contains('ocr-confirming')) { card.classList.add('active'); }
     if (timers[id]) clearInterval(timers[id]);
-    const respawnDate = new Date(targetTime); const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const respawnDate = new Date(targetTime); 
+    const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (typeof updateCountdown === 'function') {
         updateCountdown(id, targetTime, timeString); 
         timers[id] = setInterval(() => { updateCountdown(id, targetTime, timeString); }, 1000);
