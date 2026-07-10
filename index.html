@@ -133,8 +133,16 @@
     </div>
     
     <div class="test-notice-bar">⚠️ 截圖辨識功能目前為實驗測試階段，請務必手動確認數據</div>
-
-    <div id="respawn-area-wrapper"></div>
+    
+	<!-- 🎯 完美安插在此位置：生活圈分頁控制列 -->
+    <div id="zone-tabs-container" style="display: flex; justify-content: center; gap: 8px; margin: 10px auto 15px auto; max-width: 500px; flex-wrap: wrap;">
+        <button class="zone-tab-btn active" onclick="switchZoneTab('all')" id="tab-all" style="background: #2575fc; color: white; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;">🌐 全部</button>
+        <button class="zone-tab-btn" onclick="switchZoneTab('home')" id="tab-home" style="background: #e0e0e0; color: #333; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;">🏠 住家</button>
+        <button class="zone-tab-btn" onclick="switchZoneTab('office')" id="tab-office" style="background: #e0e0e0; color: #333; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;">🏢 公司</button>
+        <button class="zone-tab-btn" onclick="switchZoneTab('travel')" id="tab-travel" style="background: #e0e0e0; color: #333; border: none; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;">🗺️ 出遊</button>
+    </div>
+    
+	<div id="respawn-area-wrapper"></div>
     <div id="tracker-container"></div>
 
     <div class="modal-backdrop" id="ocr-backdrop" onclick="closeOcrModal()"></div>
