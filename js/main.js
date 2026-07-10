@@ -150,9 +150,18 @@ function addMushroom(data = null) {
     const isOffice = data && data.zone === 'office' ? 'selected' : '';
     const isTravel = data && data.zone === 'travel' ? 'selected' : '';
 
-    // 🏡 簡化為：一改變就存檔、一存檔就立刻同步上傳雲端，不再經過任何中間干擾
+// 🏡 究極血統鎖：一改變就直接改寫底層 LocalStorage，不經過任何變數轉手
     const zoneSelectHtml = `
-        <select id="zone-${id}" onchange="saveState(); if(typeof uploadToCloudBackground === 'function'){ uploadToCloudBackground(); } filterUiByCurrentZone();" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
+        <select id="zone-${id}" onchange="
+            try {
+                let db = JSON.parse(localStorage.getItem('pikmin_mushroom_final_database') || '[]');
+                let item = db.find(x => x.id == '${id}');
+                if(item) { item.zone = this.value; localStorage.setItem('pikmin_mushroom_final_database', JSON.stringify(db)); }
+                document.getElementById('card-${id}').dataset.zone = this.value;
+                if(typeof uploadToCloudBackground === 'function'){ uploadToCloudBackground(); }
+                filterUiByCurrentZone();
+            } catch(e){ console.error(e); }
+        " style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
             <option value="all" ${data && data.zone==='all'?'selected':''}>🌐</option>
             <option value="home" ${data && data.zone==='home'?'selected':''}>🏠</option>
             <option value="office" ${data && data.zone==='office'?'selected':''}>🏢</option>
