@@ -6,6 +6,9 @@ let notifiedItems = {};
 let html5QrcodeScanner = null;
 let isRespawnSectionCollapsed = false; 
 
+// 🎯 追蹤目前使用者停在哪個分頁，預設是全部 'all'
+let currentActiveZone = 'all';
+
 function loadLaunchOffset() {
     const saved = localStorage.getItem(OFFSET_KEY);
     if (saved !== null) { document.getElementById('app-launch-offset').value = saved; }
@@ -29,14 +32,29 @@ function migrateOldData() {
 }
 
 function saveState() {
-    // 安全防護：如果畫面上連一個 card 節點都還沒有建立（代表 main.js 還沒跑完），絕對不允許覆蓋存檔！
     const container = document.getElementById('tracker-container');
     if (!container) return;
     
-    const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); const data = [];
+    const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); 
+    const data = [];
+    
     cards.forEach(card => {
-        const id = card.id.replace('card-', ''); const nameEl = document.getElementById(`name-${id}`);
-        if (nameEl) { data.push({ id: id, name: nameEl.value, min: document.getElementById(`m-${id}`).value, sec: document.getElementById(`s-${id}`).value, targetTime: card.dataset.respawnTime }); }
+        const id = card.id.replace('card-', ''); 
+        const nameEl = document.getElementById(`name-${id}`);
+        // 🎯 抓取卡片上的分頁下拉選單數值（如果沒有，就跟隨當前分頁或給預設值 all）
+        const zoneEl = document.getElementById(`zone-${id}`);
+        const zoneVal = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
+
+        if (nameEl) { 
+            data.push({ 
+                id: id, 
+                name: nameEl.value, 
+                min: document.getElementById(`m-${id}`).value, 
+                sec: document.getElementById(`s-${id}`).value, 
+                targetTime: card.dataset.respawnTime,
+                zone: zoneVal // 🚀 順便打包生活圈欄位，一起衝上雲端！
+            }); 
+        }
     });
     localStorage.setItem(DB_KEY, JSON.stringify(data));
 }
@@ -51,10 +69,25 @@ function loadState() {
         if (stored && typeof addMushroom === 'function') {
             let data = JSON.parse(stored);
             if (data.length > 0) {
-                let hasEmpty = false; data = data.filter(item => { const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity"); if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; } return true; });
-                data.forEach(item => addMushroom(item)); 
+                let hasEmpty = false; 
+                data = data.filter(item => { 
+                    const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity"); 
+                    if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; } 
+                    return true; 
+                });
+                
+                data.forEach(item => {
+                    // 🛡️ 安全防護防爆：如果是以前沒有 zone 屬性的老菇點，開機時一律全自動給它 'all' (未分類)
+                    if (!item.zone) { item.zone = 'all'; }
+                    addMushroom(item); 
+                }); 
+                
                 if (typeof sortMushrooms === 'function') sortMushrooms(); 
                 if (typeof renderRespawnBadges === 'function') renderRespawnBadges(); 
+                
+                // 🚀 載入完畢後，根據當前的分頁立刻做一次視覺過濾
+                if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone();
+                
                 saveState(); 
                 return;
             }
