@@ -1,8 +1,25 @@
-// ★ 全獨立定時巡邏雲端模組 (100% 不撞車、不影響原廠 onload 渲染)
+// ★ 全獨立定時巡邏雲端模組 - 漸進式折疊（點擊監聽絕對修正版）
 const MY_GAS_API_URL = "https://script.google.com/macros/s/AKfycbzzCL1Bin86sj4yvtSeF2n_dMF7LDHB_EbDJI2zX4DUFI0FMidnfX1V-wco1tLGFahP/exec"; 
 const SYNC_KEY_STORAGE = 'pikmin_cloud_sync_6_char_key';
-// 紀錄目前面板是展開還是收合狀態，預設為收合 (false)
+
 let isCloudPanelExpanded = false;
+
+// 🎯 全域點擊防禦網：不論內部 HTML 怎麼刷，只要點到面板，100% 觸發開合
+document.addEventListener("click", function(e) {
+    // 尋找點擊的目標是不是在雲端面板內
+    const panel = document.getElementById("cloud-sync-panel");
+    if (!panel) return;
+    
+    // 如果點擊的地方在面板裡面
+    if (panel.contains(e.target)) {
+        // 防呆：如果是點到裡面的「按鈕」或「輸入框」，乖乖執行原功能，不要收合
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+        
+        // 點到空白處或文字，立刻觸發折疊
+        isCloudPanelExpanded = !isCloudPanelExpanded;
+        updateSyncUiStatus();
+    }
+});
 
 // 🎯 定時巡邏，當 <h2> 出現就注入面板
 let uiCheckTimer = setInterval(() => {
@@ -23,16 +40,9 @@ function initCloudSyncSystem(h2El) {
     
     const panel = document.createElement("div");
     panel.id = "cloud-sync-panel";
-    // 🎨 加入 cursor: pointer 讓整條橫幅都可以點擊，並加入 transition 達成絲滑收合動畫
-    panel.style = "background: #f0f7ff; border: 1px solid #d0e3ff; padding: 10px 12px; border-radius: 8px; margin: 10px auto 15px auto; max-width: 500px; font-size: 0.9rem; font-family: sans-serif; box-sizing: border-box; cursor: pointer; transition: all 0.3s ease-in-out; position: relative; box-shadow: 0 2px 6px rgba(37,117,252,0.05);";
+    // 🎨 滑鼠懸停會變手指，代表可點擊
+    panel.style = "background: #f0f7ff; border: 1px solid #d0e3ff; padding: 10px 12px; border-radius: 8px; margin: 10px auto 15px auto; max-width: 500px; font-size: 0.9rem; font-family: sans-serif; box-sizing: border-box; cursor: pointer; transition: all 0.2s ease-in-out; position: relative; box-shadow: 0 2px 6px rgba(37,117,252,0.05);";
     
-    // 點擊面板任一處時，觸發切換折疊狀態
-    panel.onclick = function(e) {
-        // 防呆：如果使用者是點擊到裡面的按鈕或輸入框，不要觸發收合
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-        toggleCloudPanel();
-    };
-
     h2El.parentNode.insertBefore(panel, h2El.nextSibling);
     
     updateSyncUiStatus();
@@ -47,12 +57,6 @@ function initCloudSyncSystem(h2El) {
     }
 }
 
-// 🔄 切換展開/收合狀態
-function toggleCloudPanel() {
-    isCloudPanelExpanded = !isCloudPanelExpanded;
-    updateSyncUiStatus();
-}
-
 // 核心：動態渲染面板內部（平時只保留第一行，展開才露出按鈕群）
 function updateSyncUiStatus() {
     const panel = document.getElementById("cloud-sync-panel");
@@ -61,7 +65,6 @@ function updateSyncUiStatus() {
     const currentKey = getStoredSyncKey();
     const arrow = isCloudPanelExpanded ? "▵" : "▿";
     
-    // 建立基礎的第一行內容（膠囊外殼）
     let htmlContent = "";
     
     if (currentKey) {
@@ -80,16 +83,14 @@ function updateSyncUiStatus() {
         `;
     }
     
-    // 🛠️ 根據目前是展開還是收合，決定要不要灌入下方的操作區塊
     if (isCloudPanelExpanded) {
-        // 面板加深底色，提示使用者目前在設定狀態
         panel.style.background = "#e6f2ff";
         panel.style.borderColor = "#b3d7ff";
         
         if (currentKey) {
             htmlContent += `
                 <div style="border-top: 1px dashed #d0e3ff; margin-top: 8px; padding-top: 8px; animation: fadeIn 0.2s ease-out;">
-                    <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:8px;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
+                    <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:8px; user-select: none;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
                     <div style="display:flex; justify-content:center; gap:8px;">
                         <button onclick="forceManualSync()" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
                             🔄 手動同步/刷新
@@ -117,7 +118,6 @@ function updateSyncUiStatus() {
             `;
         }
     } else {
-        // 收合時恢復原本清爽的淺藍色
         panel.style.background = "#f0f7ff";
         panel.style.borderColor = "#d0e3ff";
     }
@@ -172,7 +172,7 @@ function uploadToCloudBackground() {
     }).catch(err => console.log("背景同步略過", err));
 }
 
-// 🔄 按鈕：手動智慧融合刷新（完畢後自動防呆收合）
+// 🔄 手動刷新
 function forceManualSync() {
     const syncKey = getStoredSyncKey();
     if (!syncKey) return;
@@ -202,13 +202,13 @@ function forceManualSync() {
             body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalArray) })
         }).then(() => {
             alert("🚀 雲端三方智慧融合與同步刷新成功！");
-            isCloudPanelExpanded = false; // 🎯 自動收合
+            isCloudPanelExpanded = false; 
             updateSyncUiStatus();
         });
     }).catch(() => alert("❌ 刷新失敗，請確認網路連線。"));
 }
 
-// 🔗 按鈕：產生金鑰（完畢後自動防呆收合）
+// 🔗 產生金鑰
 function generateNewSyncKey() {
     if (!MY_GAS_API_URL || !MY_GAS_API_URL.startsWith("https")) return alert("❌ 請填入正確的 API 網址！");
     
@@ -236,14 +236,14 @@ function generateNewSyncKey() {
                 body: JSON.stringify({ action: "save", key: resultKey, data: localData })
             }).then(() => {
                 alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
-                isCloudPanelExpanded = false; // 🎯 自動收合
+                isCloudPanelExpanded = false; 
                 updateSyncUiStatus();
             });
         }
     }).catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
 }
 
-// 🤝 按鈕：連線綁定與純名稱摘要（完畢後自動防呆收合）
+// 🤝 連線綁定
 function triggerUiBinding() {
     const inputEl = document.getElementById("sync-input-field");
     if (!inputEl || !inputEl.value.trim()) return alert("請輸入有效的 6 碼金鑰！");
@@ -263,14 +263,13 @@ function triggerUiBinding() {
             if (cloudArray.length === 0) {
                 if (confirm(`💡 您輸入的金鑰【 ${cleanKey} 】目前在雲端無任何菇點紀錄。\n\n點擊「確定」將會把此裝置目前的菇點綁定上傳。`)) {
                     localStorage.setItem(SYNC_KEY_STORAGE, cleanKey);
-                    isCloudPanelExpanded = false; // 🎯 自動收合
+                    isCloudPanelExpanded = false; 
                     updateSyncUiStatus();
                     uploadToCloudBackground();
                 }
                 return;
             }
             
-            // 🛡️ 精準防漏：只擷取純名稱摘要
             const nameList = cloudArray
                 .map(item => item.name ? item.name.trim() : "")
                 .filter(name => name !== "")
@@ -297,7 +296,7 @@ function triggerUiBinding() {
                     body: JSON.stringify({ action: "save", key: cleanKey, data: JSON.stringify(finalMerged) })
                 }).then(() => {
                     alert("✅ 雲端智慧同步綁定成功！");
-                    isCloudPanelExpanded = false; // 🎯 自動收合
+                    isCloudPanelExpanded = false; 
                     updateSyncUiStatus();
                 });
             }
@@ -309,7 +308,7 @@ function unlinkSyncKey() {
     if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留。")) {
         localStorage.removeItem(SYNC_KEY_STORAGE);
         alert("已成功退回本地單機模式！");
-        isCloudPanelExpanded = false; // 🎯 自動收合
+        isCloudPanelExpanded = false; 
         updateSyncUiStatus();
     }
 }
@@ -328,7 +327,6 @@ function uiModuleMerge(localArray, remoteArray) {
     return Array.from(mergedMap.values());
 }
 
-// 注入微型動畫 CSS 效果
 const styleSheet = document.createElement("style");
 styleSheet.innerText = `@keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }`;
 document.head.appendChild(styleSheet);
