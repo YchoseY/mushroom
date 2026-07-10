@@ -59,8 +59,13 @@ function filterUiByCurrentZone() {
         const zoneEl = document.getElementById(`zone-${id}`);
         const cardZone = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
 
-        if (currentActiveZone === 'all' || cardZone === currentActiveZone) {
+        // ✅ 修改這裡：新增 unassigned 判斷邏輯
+        if (currentActiveZone === 'all') {
             card.style.setProperty('display', 'flex', 'important');
+        } else if (currentActiveZone === 'unassigned' && cardZone === 'all') {
+            card.style.setProperty('display', 'flex', 'important'); // 未分類專屬
+        } else if (cardZone === currentActiveZone) {
+            card.style.setProperty('display', 'flex', 'important'); // 吻合當前分類
         } else {
             card.style.setProperty('display', 'none', 'important');
         }
@@ -70,7 +75,13 @@ function filterUiByCurrentZone() {
     const badges = document.querySelectorAll('.badge-item');
     badges.forEach(badge => {
         const badgeZone = badge.dataset.zone || 'all';
-        if (currentActiveZone === 'all' || badgeZone === currentActiveZone) {
+        
+        // ✅ 歷史標籤也要同步修改邏輯
+        if (currentActiveZone === 'all') {
+            badge.style.setProperty('display', 'flex', 'important');
+        } else if (currentActiveZone === 'unassigned' && badgeZone === 'all') {
+            badge.style.setProperty('display', 'flex', 'important');
+        } else if (badgeZone === currentActiveZone) {
             badge.style.setProperty('display', 'flex', 'important');
         } else {
             badge.style.setProperty('display', 'none', 'important');
