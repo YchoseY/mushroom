@@ -35,13 +35,15 @@ function saveState() {
     const container = document.getElementById('tracker-container');
     if (!container) return;
     
-    const cards = document.querySelectorAll('.card:not(.ocr-confirming)'); 
+    // ✨ 修正點：不論卡片有沒有 is-respawned 類別，通通都要掃描並打包！
+    const cards = document.querySelectorAll('.card'); 
     const data = [];
     
     cards.forEach(card => {
         const id = card.id.replace('card-', ''); 
         const nameEl = document.getElementById(`name-${id}`);
-        // 🎯 抓取卡片上的分頁下拉選單數值（如果沒有，就跟隨當前分頁或給預設值 all）
+        
+        // 🎯 100% 精準抓取下拉選單目前的真實選擇
         const zoneEl = document.getElementById(`zone-${id}`);
         const zoneVal = zoneEl ? zoneEl.value : (card.dataset.zone || 'all');
 
@@ -49,10 +51,10 @@ function saveState() {
             data.push({ 
                 id: id, 
                 name: nameEl.value, 
-                min: document.getElementById(`m-${id}`).value, 
-                sec: document.getElementById(`s-${id}`).value, 
+                min: document.getElementById(`m-${id}`) ? document.getElementById(`m-${id}`).value : "", 
+                sec: document.getElementById(`s-${id}`) ? document.getElementById(`s-${id}`).value : "", 
                 targetTime: card.dataset.respawnTime,
-                zone: zoneVal // 🚀 順便打包生活圈欄位，一起衝上雲端！
+                zone: zoneVal // 🚀 確保百分之百寫入陣列物件中！
             }); 
         }
     });
