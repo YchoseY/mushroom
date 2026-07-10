@@ -4,14 +4,12 @@ const SYNC_KEY_STORAGE = 'pikmin_cloud_sync_6_char_key';
 
 let isCloudPanelExpanded = false;
 
-// 🎯 全域點擊防禦網（精準人類點擊修正版）
+// 🎯 全域點擊防禦網
 document.addEventListener("click", function(e) {
     const panel = document.getElementById("cloud-sync-panel");
     if (!panel) return;
     
-    // 💡 核心修正：只有人類真正點在「面板外殼或面板內的文字」時，才觸發折疊
     if (panel === e.target || panel.contains(e.target)) {
-        // 防呆：如果是點到面板裡面的「按鈕」或「輸入框（秒數設定）」，不要縮合面板
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
         
         isCloudPanelExpanded = !isCloudPanelExpanded;
@@ -33,7 +31,6 @@ function getStoredSyncKey() {
     return key ? key.trim().toUpperCase() : null;
 }
 
-// 讀取目前儲存的地圖延遲秒數，若無則給預設值 3
 function getCurrentOffsetValue() {
     const saved = localStorage.getItem('pikmin_app_launch_offset_time');
     return saved !== null ? saved : "3";
@@ -60,18 +57,18 @@ function initCloudSyncSystem(h2El) {
     }
 }
 
-// 核心：動態渲染面板內部
+// 核心：動態渲染面板內部（確保 id="app-launch-offset" 在收合時也絕對存在）
 function updateSyncUiStatus() {
     const panel = document.getElementById("cloud-sync-panel");
     if (!panel) return;
     
     const currentKey = getStoredSyncKey();
-    const currentOffset = getCurrentOffsetValue(); // 抓取最新秒數資訊
+    const currentOffset = getCurrentOffsetValue(); 
     const arrow = isCloudPanelExpanded ? "▵" : "▿";
     
     let htmlContent = "";
     
-    // ✨ 膠囊外殼：在平時收合狀態下，也把秒數資訊用小灰字優雅掛在後方
+    // 膠囊外殼核心文字
     if (currentKey) {
         htmlContent = `
             <div style="font-weight: bold; color: #333; display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap; user-select: none;">
@@ -90,7 +87,7 @@ function updateSyncUiStatus() {
         `;
     }
     
-    // 🛠️ 展開狀態
+    // 🛠️ 根據狀態決定下方控制元件與輸入框的「顯示型態」
     if (isCloudPanelExpanded) {
         panel.style.background = "#e6f2ff";
         panel.style.borderColor = "#b3d7ff";
@@ -123,7 +120,7 @@ function updateSyncUiStatus() {
             `;
         }
 
-        // 🏡 幫地圖延遲設定蓋一間精美的新隔間
+        // 展開時：正常顯示隔間與實體輸入框
         htmlContent += `
             <div style="border-top: 1px dashed #d0e3ff; margin-top: 8px; padding-top: 8px; animation: fadeIn 0.2s ease-out;">
                 ${controlButtonsHtml}
@@ -139,6 +136,9 @@ function updateSyncUiStatus() {
     } else {
         panel.style.background = "#f0f7ff";
         panel.style.borderColor = "#d0e3ff";
+        
+        // ✨ 關鍵防摔鎖：收合時，我們在背後塞一個隱藏的 input 節點給 main.js 讀取，確保它抓得到數值絕對不崩潰
+        htmlContent += `<input type="number" id="app-launch-offset" value="${currentOffset}" style="display: none;">`;
     }
     
     panel.innerHTML = htmlContent;
