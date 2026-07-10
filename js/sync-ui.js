@@ -327,14 +327,31 @@ function unlinkSyncKey() {
 function uiModuleMerge(localArray, remoteArray) {
     const mergedMap = new Map();
     let uniqueTimeCounter = Date.now();
-    localArray.forEach(item => { if (item.name && item.name.trim() !== "") { mergedMap.set(item.name.trim(), item); } });
+    
+    // 1. 先將「本地資料」放入 Map
+    localArray.forEach(item => { 
+        if (item.name && item.name.trim() !== "") { 
+            mergedMap.set(item.name.trim(), item); 
+        } 
+    });
+    
+    // 2. 處理「遠端資料」
     remoteArray.forEach(item => {
         if (item.name && item.name.trim() !== "") {
             const nameKey = item.name.trim();
-            if (mergedMap.has(nameKey)) { const oldItem = mergedMap.get(nameKey); item.id = oldItem.id; mergedMap.set(nameKey, item); } 
-            else { uniqueTimeCounter++; item.id = uniqueTimeCounter; mergedMap.set(nameKey, item); }
+            if (mergedMap.has(nameKey)) { 
+                // ✅ 修正點：本地已經有這個地點，代表本地的修改是最新的！
+                // 我們「什麼都不做」，保留本地資料，避免被遠端的舊時間與舊生活圈覆蓋。
+            } 
+            else { 
+                // 雲端有，但這台手機沒有的新菇點，才加進來
+                uniqueTimeCounter++; 
+                item.id = uniqueTimeCounter; 
+                mergedMap.set(nameKey, item); 
+            }
         }
     });
+    
     return Array.from(mergedMap.values());
 }
 
