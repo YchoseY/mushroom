@@ -1,16 +1,15 @@
-// ★ 雲端個人同步插槽 (請在此處填入你最新部署複製的 Google Apps Script 網頁應用程式 URL)
+// ★ 雲端個人同步插槽
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzzCL1Bin86sj4yvtSeF2n_dMF7LDHB_EbDJI2zX4DUFI0FMidnfX1V-wco1tLGFahP/exec";
 
 const DB_KEY = 'pikmin_mushroom_final_database';
 const OFFSET_KEY = 'pikmin_app_launch_offset_time';
-const KEY_STORAGE_NAME = 'pikmin_cloud_sync_6_char_key'; // 本地記憶金鑰的牆
+const KEY_STORAGE_NAME = 'pikmin_cloud_sync_6_char_key'; 
 
 let timers = {};
 let notifiedItems = {}; 
 let html5QrcodeScanner = null;
 let isRespawnSectionCollapsed = false; 
 
-// 🎯 全自動防呆校正：獲取金鑰並自動轉大寫、去空格
 function getStoredSyncKey() {
     const key = localStorage.getItem(KEY_STORAGE_NAME);
     return key ? key.trim().toUpperCase() : null;
@@ -38,7 +37,6 @@ function migrateOldData() {
     if (migratedData.length > 0) { localStorage.setItem(DB_KEY, JSON.stringify(migratedData)); }
 }
 
-// 🎯 核心同步存檔：每次本地變更，在背景自動與雲端最新檔案進行「三方智慧融合」後才覆蓋，確保永不洗掉任何一邊的新菇點
 function saveState() {
     const container = document.getElementById('tracker-container');
     if (!container) return;
@@ -54,7 +52,6 @@ function saveState() {
     
     const syncKey = getStoredSyncKey();
     if (syncKey && GAS_API_URL && GAS_API_URL.startsWith("https")) {
-        // 先去雲端抓取最新的遠端資料，與剛產出的本地資料做一次無感智慧融合
         fetch(GAS_API_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
@@ -67,18 +64,16 @@ function saveState() {
                 const cloudArray = JSON.parse(resData.data);
                 finalMergedArray = backgroundExecuteMerge(data, cloudArray);
             }
-            // 融合完成後，再把萬無一失的完整大合集上傳回雲端
             fetch(GAS_API_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalMergedArray) })
             });
-        }).catch(err => console.log("背景異步同步中...", err));
+        }).catch(err => console.log("背景同步中...", err));
     }
 }
 
-// 🎯 開機全自動靜態讀檔：如果綁定過金鑰，一開網頁自動去雲端抓取對齊，完全免登入
 function loadState() {
     try {
         migrateOldData();
@@ -100,14 +95,14 @@ function loadState() {
                 }
             })
             .catch(err => {
-                console.log("改用本地快取讀取", err);
+                console.log("改用本地快取", err);
                 renderLoadedData(localStorage.getItem(DB_KEY));
             });
         } else {
             renderLoadedData(localStorage.getItem(DB_KEY));
         }
     } catch(error) {
-        console.error("本地資料安全相容恢復中：", error);
+        console.error("安全相容恢復中：", error);
         if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
     }
 }
@@ -128,7 +123,7 @@ function renderLoadedData(stored) {
     if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
 }
 
-// 內部專用背景融合大腦：不更動外部 mergeArrays 介面，確保程式碼相容安全
+// 🎯 核心大腦融合算法：維持放在 state.js
 function backgroundExecuteMerge(localArray, remoteArray) {
     const mergedMap = new Map();
     let uniqueTimeCounter = Date.now();
@@ -141,6 +136,4 @@ function backgroundExecuteMerge(localArray, remoteArray) {
         }
     });
     return Array.from(mergedMap.values());
-}
-    .catch(err => alert("❌ 金鑰連線查無資料或網路逾時，請重新檢查。"));
 }
