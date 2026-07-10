@@ -3,33 +3,50 @@ document.addEventListener("DOMContentLoaded", () => {
     updateSyncUiStatus();
 });
 
-// 全自動刷新畫面上的雲端狀態
+// 全自動刷新畫面上的雲端狀態與面板
 function updateSyncUiStatus() {
     const statusTextEl = document.getElementById("sync-status-text");
     const actionsRowEl = document.getElementById("sync-actions-row");
     
     if (!statusTextEl) return;
     
-    // 從先前寫好的 state.js 裡抓取目前有沒有綁定金鑰
+    // 從 state.js 裡抓取目前有沒有綁定金鑰
     const currentKey = typeof getStoredSyncKey === "function" ? getStoredSyncKey() : null;
     
     if (currentKey) {
-        statusTextEl.innerHTML = `🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-size:1.05rem;">${currentKey}</span> 】`;
-        // 已綁定成功，把輸入框和按鈕收起來，改成「解除綁定」按鈕，防止使用者搞混
+        statusTextEl.innerHTML = `🟢 雲端同步中：專屬金鑰【 <span style="color:#2575fc; font-weight:bold; font-size:1.05rem;">${currentKey}</span> 】`;
+        // 已綁定成功，把輸入框和按鈕收起來，改成「解除綁定」與日常手動強制同步按鈕
         if (actionsRowEl) {
             actionsRowEl.innerHTML = `
-                <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:4px;">💡 所有日常修改皆會全自動同步至雲端。</span>
-                <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                    ❌ 解除雲端綁定
-                </button>
+                <span style="color: #666; font-size:0.8rem; display:block; margin-bottom:6px;">💡 所有日常修改（點擊 ✓、刪除 ✕ 等）皆會自動送上雲端。</span>
+                <div style="display:flex; justify-content:center; gap:8px;">
+                    <button onclick="if(typeof saveState==='function'){saveState(); alert('🚀 已強制將目前畫面菇點與雲端進行三方智慧融合！');}" style="background: #2ecc71; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight:bold;">
+                        🔄 手動同步/刷新
+                    </button>
+                    <button onclick="unlinkSyncKey()" style="background: #ff4d4d; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                        ❌ 解除雲端綁定
+                    </button>
+                </div>
             `;
         }
     } else {
         statusTextEl.innerHTML = `⚪ 雲端狀態：單機模式 (資料僅存於此手機)`;
+        if (actionsRowEl) {
+            actionsRowEl.innerHTML = `
+                <button onclick="generateNewSyncKey()" style="background: #2575fc; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin: 2px;">
+                    🔗 產生同步金鑰
+                </button>
+                <span style="color: #ccc; margin: 0 4px;">|</span>
+                <input type="text" id="sync-input-field" placeholder="輸入6碼金鑰" maxlength="10" style="width: 100px; padding: 5px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; margin: 2px;">
+                <button onclick="triggerUiBinding()" style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin: 2px;">
+                    🤝 連線綁定
+                </button>
+            `;
+        }
     }
 }
 
-// 驅動第二台裝置連線的 UI 橋樑（自帶防呆提示）
+// 驅動第二台裝置連線的 UI 橋樑
 function triggerUiBinding() {
     const inputEl = document.getElementById("sync-input-field");
     if (!inputEl) return;
@@ -40,7 +57,6 @@ function triggerUiBinding() {
         return;
     }
     
-    // 呼叫先前在 state.js 寫好的「智慧撈取 + 條列純菇點名稱摘要盾牌」
     if (typeof bindExistingSyncKey === "function") {
         bindExistingSyncKey(val);
     }
@@ -49,8 +65,44 @@ function triggerUiBinding() {
 // 解除綁定（回復成單機本地模式）
 function unlinkSyncKey() {
     if (confirm("確定要斷開與雲端的連線嗎？\n\n斷開後這台手機新增的菇點將不會傳上雲端，但目前的菇點紀錄依然會保留在手機上。")) {
-        localStorage.removeItem('pikmin_cloud_sync_6_char_key'); // 清除金鑰牆
+        localStorage.removeItem('pikmin_cloud_sync_6_char_key'); 
         alert("已成功退回本地單機模式！");
-        location.reload();
+        updateSyncUiStatus();
     }
 }
+
+// 🎯 覆寫原本的產生按鈕動作，確保在跳出金鑰的瞬間，介面同步刷新，並補足一次存檔
+const originalGenerateNewSyncKey = window.generateNewSyncKey;
+window.generateNewSyncKey = function() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let resultKey = "PKM";
+    for (let i = 0; i < 3; i++) { resultKey += chars.charAt(Math.floor(Math.random() * chars.length)); }
+    
+    if (!GAS_API_URL || !GAS_API_URL.startsWith("https")) return alert("❌ 請先在 state.js 中設定您的 GAS_API_URL！");
+    
+    fetch(GAS_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ action: "check_duplicate", key: resultKey })
+    })
+    .then(res => res.json())
+    .then(resData => {
+        if (resData.status === "success" && resData.exists === true) {
+            window.generateNewSyncKey(); 
+        } else {
+            localStorage.setItem('pikmin_cloud_sync_6_char_key', resultKey);
+            const localData = localStorage.getItem(DB_KEY) || "[]";
+            
+            fetch(GAS_API_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "save", key: resultKey, data: localData })
+            }).then(() => {
+                alert(`🎉 雲端個人同步通道開通成功！\n\n🔑 您的專屬同步金鑰為：【 ${resultKey} 】`);
+                updateSyncUiStatus(); // 🛠️ 防線 1：強行立刻更新介面，不再等待 reload 快取
+                if (typeof saveState === "function") saveState(); // 🛠️ 防線 2：強制同步寫入試算表
+            });
+        }
+    }).catch(() => alert("❌ 雲端連線失敗，請檢查網路狀態。"));
+};
