@@ -1,19 +1,11 @@
-// ★ 雲端個人同步插槽
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzzCL1Bin86sj4yvtSeF2n_dMF7LDHB_EbDJI2zX4DUFI0FMidnfX1V-wco1tLGFahP/exec";
-
+// ★ 回復最原始健康的單機大腦（完全物理隔離）
 const DB_KEY = 'pikmin_mushroom_final_database';
 const OFFSET_KEY = 'pikmin_app_launch_offset_time';
-const KEY_STORAGE_NAME = 'pikmin_cloud_sync_6_char_key'; 
 
 let timers = {};
 let notifiedItems = {}; 
 let html5QrcodeScanner = null;
 let isRespawnSectionCollapsed = false; 
-
-function getStoredSyncKey() {
-    const key = localStorage.getItem(KEY_STORAGE_NAME);
-    return key ? key.trim().toUpperCase() : null;
-}
 
 function loadLaunchOffset() {
     const saved = localStorage.getItem(OFFSET_KEY);
@@ -49,60 +41,15 @@ function saveState() {
     
     const jsonString = JSON.stringify(data);
     localStorage.setItem(DB_KEY, jsonString);
-    
-    const syncKey = getStoredSyncKey();
-    if (syncKey && GAS_API_URL && GAS_API_URL.startsWith("https")) {
-        fetch(GAS_API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ action: "load", key: syncKey })
-        })
-        .then(res => res.json())
-        .then(resData => {
-            let finalMergedArray = data;
-            if (resData.status === "success" && resData.data && resData.data !== "[]") {
-                const cloudArray = JSON.parse(resData.data);
-                finalMergedArray = backgroundExecuteMerge(data, cloudArray);
-            }
-            fetch(GAS_API_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "save", key: syncKey, data: JSON.stringify(finalMergedArray) })
-            });
-        }).catch(err => console.log("背景同步中...", err));
-    }
 }
 
 function loadState() {
     try {
         migrateOldData();
-        const syncKey = getStoredSyncKey();
-        
-        if (syncKey && GAS_API_URL && GAS_API_URL.startsWith("https")) {
-            fetch(GAS_API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify({ action: "load", key: syncKey })
-            })
-            .then(res => res.json())
-            .then(resData => {
-                if (resData.status === "success" && resData.data && resData.data !== "[]") {
-                    localStorage.setItem(DB_KEY, resData.data); 
-                    renderLoadedData(resData.data);
-                } else {
-                    renderLoadedData(localStorage.getItem(DB_KEY));
-                }
-            })
-            .catch(err => {
-                console.log("改用本地快取", err);
-                renderLoadedData(localStorage.getItem(DB_KEY));
-            });
-        } else {
-            renderLoadedData(localStorage.getItem(DB_KEY));
-        }
+        const stored = localStorage.getItem(DB_KEY);
+        renderLoadedData(stored);
     } catch(error) {
-        console.error("安全相容恢復中：", error);
+        console.error("本地資料相容恢復中：", error);
         if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
     }
 }
@@ -121,19 +68,4 @@ function renderLoadedData(stored) {
         }
     }
     if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
-}
-
-// 🎯 核心大腦融合算法：維持放在 state.js
-function backgroundExecuteMerge(localArray, remoteArray) {
-    const mergedMap = new Map();
-    let uniqueTimeCounter = Date.now();
-    localArray.forEach(item => { const nameKey = item.name.trim(); if (nameKey !== "") { mergedMap.set(nameKey, item); } });
-    remoteArray.forEach(item => {
-        const nameKey = item.name.trim();
-        if (nameKey !== "") {
-            if (mergedMap.has(nameKey)) { const oldItem = mergedMap.get(nameKey); item.id = oldItem.id; mergedMap.set(nameKey, item); } 
-            else { uniqueTimeCounter++; item.id = uniqueTimeCounter; mergedMap.set(nameKey, item); }
-        }
-    });
-    return Array.from(mergedMap.values());
 }
