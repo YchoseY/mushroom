@@ -4,13 +4,14 @@ const SYNC_KEY_STORAGE = 'pikmin_cloud_sync_6_char_key';
 
 let isCloudPanelExpanded = false;
 
-// 🎯 全域點擊監聽：點到空白或文字時折疊開合
+// 🎯 全域點擊防禦網（精準人類點擊修正版）
 document.addEventListener("click", function(e) {
     const panel = document.getElementById("cloud-sync-panel");
     if (!panel) return;
     
-    if (panel.contains(e.target)) {
-        // 防呆：點到按鈕或輸入框，不要縮合面板
+    // 💡 核心修正：只有人類真正點在「面板外殼或面板內的文字」時，才觸發折疊
+    if (panel === e.target || panel.contains(e.target)) {
+        // 防呆：如果是點到面板裡面的「按鈕」或「輸入框（秒數設定）」，不要縮合面板
         if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
         
         isCloudPanelExpanded = !isCloudPanelExpanded;
