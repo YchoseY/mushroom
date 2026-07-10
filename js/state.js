@@ -1,12 +1,3 @@
-// 🎯 全自動外掛載入器：自動幫 index.html 引入雲端同步面板
-(function() {
-    if (!document.querySelector('script[src="js/sync-ui.js"]')) {
-        const script = document.createElement('script');
-        script.src = 'js/sync-ui.js';
-        document.body.appendChild(script);
-    }
-})();
-
 const DB_KEY = 'pikmin_mushroom_final_database';
 const OFFSET_KEY = 'pikmin_app_launch_offset_time';
 
