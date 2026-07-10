@@ -62,6 +62,10 @@ function saveState() {
         }
     });
     localStorage.setItem(DB_KEY, JSON.stringify(data));
+    // 🚀 【終極核心修正】只要地端資料庫一變動，立刻牽動巡邏大腦送上雲端後台！
+    if (typeof uploadToCloudBackground === 'function') {
+        uploadToCloudBackground();
+    }
 }
 
 function loadState() {
