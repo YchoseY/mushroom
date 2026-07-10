@@ -90,7 +90,7 @@ function updateCountdown(id, targetTime, timeString) {
     
     if (diff > 0 && diff <= 60000 && !notifiedItems[id]) { 
         notifiedItems[id] = true; 
-        sendWebNotification("🍄 蘑菇即將重生！", `「${document.getElementById(`name-${id}`).value || "蘑菇"}」將在 1 分鐘後重生！`);[cite: 2]
+        sendWebNotification("🍄 蘑菇即將重生！", `「${document.getElementById(`name-${id}`).value || "蘑菇"}」將在 1 分鐘後重生！`);
     }
     
     if (diff <= 0) {
