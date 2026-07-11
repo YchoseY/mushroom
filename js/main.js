@@ -179,20 +179,24 @@ function addMushroom(data = null) {
             <option value="travel" ${data && data.zone==='travel'?'selected':''}>🗺️</option>
         </select>
     `;
-    
+
+      // 替換 addMushroom 裡的 card.innerHTML 這段
     card.innerHTML = `
-        <div class="input-item-wrap">
-            <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
-            ${zoneSelectHtml}
-            <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
-            <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
-            <button class="btn-calc" id="btn-${id}" onclick="startTracking('${id}')">✓</button>
-        </div>
-        <div class="mobile-row-two">
-            <div class="result-box" id="res-${id}"> <span style="color: #bbb; font-size:0.85rem;">未設定</span> </div>
-            <button class="btn-delete" id="del-${id}" onclick="removeMushroom('${id}')">✕</button>
-        </div>
+    <div class="input-item-wrap">
+        <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
+        ${zoneSelectHtml}
+        <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
+        <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
+        <button class="btn-calc" id="btn-${id}" onclick="startTracking('${id}')">✓</button>
+    </div>
+    <div class="mobile-row-two">
+        <div class="result-box" id="res-${id}"> <span style="color: #bbb; font-size:0.85rem;">未設定</span> </div>
+        <button class="btn-edit" id="edit-${id}" onclick="editMushroom('${id}')" style="display:none;">編輯</button>
+        <button class="btn-delete" id="del-${id}" onclick="removeMushroom('${id}')">✕</button>
+    </div>
     `;
+
+    
     container.appendChild(card); attachEvents(id); updateButtonText(id);
     
     if (data && data.targetTime && data.targetTime !== "Infinity" && targetTimeNum > Date.now()) { 
@@ -206,11 +210,21 @@ function addMushroom(data = null) {
 }
 
 function updateButtonText(id) {
-    const btnCalc = document.getElementById(`btn-${id}`); const btnDel = document.getElementById(`del-${id}`);
+    const btnCalc = document.getElementById(`btn-${id}`); 
+    const btnDel = document.getElementById(`del-${id}`);
+    const btnEdit = document.getElementById(`edit-${id}`); // ✅ 抓取編輯按鈕
     if (!btnCalc || !btnDel) return;
-    if (window.innerWidth > 768) { btnCalc.innerText = "確認"; btnDel.innerText = "刪除"; } else { btnCalc.innerText = "✓"; btnDel.innerText = "✕"; }
+    
+    if (window.innerWidth > 768) { 
+        btnCalc.innerText = "確認"; 
+        btnDel.innerText = "刪除"; 
+        if(btnEdit) btnEdit.innerText = "編輯"; // ✅ 電腦版文字
+    } else { 
+        btnCalc.innerText = "✓"; 
+        btnDel.innerText = "✕"; 
+        if(btnEdit) btnEdit.innerText = "✏️"; // ✅ 手機版圖示
+    }
 }
-
 function attachEvents(id) {
     const nameInput = document.getElementById(`name-${id}`); const minInput = document.getElementById(`m-${id}`); const secInput = document.getElementById(`s-${id}`); const btnCalc = document.getElementById(`btn-${id}`);
     if(!nameInput) return;
@@ -276,6 +290,12 @@ function resumeTracking(id, targetTime) {
     const btnCalc = document.getElementById(`btn-${id}`);
     if (btnCalc) btnCalc.style.display = 'none';
 
+    // 👇 新增這段 👇
+    const btnEdit = document.getElementById(`edit-${id}`);
+    if (btnEdit && targetTime !== Infinity && !card.classList.contains('ocr-confirming')) {
+        btnEdit.style.display = 'inline-block';
+    }
+
     if (timers[id]) clearInterval(timers[id]);
     const respawnDate = new Date(targetTime); 
     const timeString = respawnDate.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -339,12 +359,16 @@ function activateRespawnedCard(id) {
     const secInput = document.getElementById(`s-${id}`);
     const zoneSel = document.getElementById(`zone-${id}`);
     const btnCalc = document.getElementById(`btn-${id}`);
+    const btnEdit = document.getElementById(`edit-${id}`);
     
     if (nameInput) nameInput.disabled = false;
     if (minInput) minInput.disabled = false;
     if (secInput) secInput.disabled = false;
     if (zoneSel) zoneSel.disabled = false;
     if (btnCalc) btnCalc.style.display = 'inline-block';
+    // 👇 新增這段 👇
+    if (btnEdit) btnEdit.style.display = 'none';
+
     
     renderRespawnBadges();
     setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);
@@ -357,6 +381,45 @@ function calculateAppStartSuggestion(totalRemainingSec) {
     const maxN = Math.floor((totalRemainingSec - baseOffset) / 8);
     if (maxN < 0) return null;
     return baseOffset + (8 * maxN);
+}
+
+// ✏️ 啟動編輯模式
+function editMushroom(id) {
+    // 1. 停止目前的倒數計時與通知
+    if (timers[id]) clearInterval(timers[id]);
+    delete notifiedItems[id];
+    
+    const card = document.getElementById(`card-${id}`);
+    if (card) {
+        card.dataset.respawnTime = 'Infinity'; // 將目標時間重設為無限大
+        card.classList.remove('active');       // 移除綠色運作中邊框
+    }
+
+    // 2. 抓取所有輸入元件
+    const nameInput = document.getElementById(`name-${id}`);
+    const minInput = document.getElementById(`m-${id}`);
+    const secInput = document.getElementById(`s-${id}`);
+    const zoneSel = document.getElementById(`zone-${id}`);
+    const btnCalc = document.getElementById(`btn-${id}`);
+    const btnEdit = document.getElementById(`edit-${id}`);
+    const resDiv = document.getElementById(`res-${id}`);
+
+    // 3. 解除輸入框鎖定，並清空時間欄位方便重新輸入
+    if (nameInput) nameInput.disabled = false;
+    if (minInput) { minInput.disabled = false; minInput.value = ''; }
+    if (secInput) { secInput.disabled = false; secInput.value = ''; }
+    if (zoneSel) zoneSel.disabled = false;
+    
+    // 4. 切換按鈕顯示，並重設文字
+    if (btnCalc) btnCalc.style.display = 'inline-block';
+    if (btnEdit) btnEdit.style.display = 'none';
+    if (resDiv) resDiv.innerHTML = `<span style="color: #bbb; font-size:0.85rem;">修改時間中...</span>`;
+    
+    // 5. 將游標自動聚焦在「分」的輸入框，提升操作速度
+    if (minInput) minInput.focus();
+    
+    // 6. 存檔並自動同步雲端 (避免另一台裝置還在倒數)
+    saveState();
 }
 
 window.addEventListener('resize', () => {
