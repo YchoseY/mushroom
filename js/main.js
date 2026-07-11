@@ -253,7 +253,7 @@ function startTracking(id) {
     const offset = offsetEl ? parseInt(offsetEl.value) || 0 : 3;
 
     const now = Date.now(); 
-    const targetTime = now + (((min * 60) + sec + (300 - offset)) * 1000);
+    const targetTime = now + (((min * 60) + sec + 300) * 1000);
     
     delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
 }
