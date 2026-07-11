@@ -176,7 +176,7 @@ function addMushroom(data = null) {
             <option value="all" ${data && data.zone==='all'?'selected':''}>🌐</option>
             <option value="home" ${data && data.zone==='home'?'selected':''}>🏠</option>
             <option value="office" ${data && data.zone==='office'?'selected':''}>🏢</option>
-            <option value="travel" ${data && data.zone==='travel'?'selected':''}>🗺️</option>
+            <option value="travel" ${data && data.zone==='travel'?'selected':''}>🏖️</option>
         </select>
     `;
 
