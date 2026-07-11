@@ -212,19 +212,25 @@ function addMushroom(data = null) {
 function updateButtonText(id) {
     const btnCalc = document.getElementById(`btn-${id}`); 
     const btnDel = document.getElementById(`del-${id}`);
-    const btnEdit = document.getElementById(`edit-${id}`); // ✅ 抓取編輯按鈕
+    const btnEdit = document.getElementById(`edit-${id}`);
     if (!btnCalc || !btnDel) return;
     
+    // 檢查目前這張卡片是否正在編輯中
+    const card = document.getElementById(`card-${id}`);
+    const isEditing = card ? card.classList.contains('is-editing') : false;
+
     if (window.innerWidth > 768) { 
         btnCalc.innerText = "確認"; 
         btnDel.innerText = "刪除"; 
-        if(btnEdit) btnEdit.innerText = "編輯"; // ✅ 電腦版文字
+        if(btnEdit) btnEdit.innerText = isEditing ? "取消" : "編輯"; // ✅ 變身為取消
     } else { 
         btnCalc.innerText = "✓"; 
         btnDel.innerText = "✕"; 
-        if(btnEdit) btnEdit.innerText = "✏️"; // ✅ 手機版圖示
+        if(btnEdit) btnEdit.innerText = isEditing ? "↩️" : "✏️";  // ✅ 變身為返回圖示
     }
 }
+
+
 function attachEvents(id) {
     const nameInput = document.getElementById(`name-${id}`); const minInput = document.getElementById(`m-${id}`); const secInput = document.getElementById(`s-${id}`); const btnCalc = document.getElementById(`btn-${id}`);
     if(!nameInput) return;
@@ -263,6 +269,11 @@ function startTracking(id) {
     const min = parseInt(document.getElementById(`m-${id}`).value) || 0; const sec = parseInt(document.getElementById(`s-${id}`).value) || 0;
     if (min === 0 && sec === 0) { return; }
     
+    const card = document.getElementById(`card-${id}`);
+    if (card) card.classList.remove('is-editing');
+    const btnEdit = document.getElementById(`edit-${id}`);
+    if (btnEdit) btnEdit.setAttribute('onclick', `editMushroom('${id}')`);
+
     const offsetEl = document.getElementById('app-launch-offset');
     const offset = offsetEl ? parseInt(offsetEl.value) || 0 : 3;
 
@@ -271,6 +282,7 @@ function startTracking(id) {
     
     delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
 }
+
 
 function resumeTracking(id, targetTime) {
     const card = document.getElementById('card-' + id); if (!card) return;
@@ -383,19 +395,23 @@ function calculateAppStartSuggestion(totalRemainingSec) {
     return baseOffset + (8 * maxN);
 }
 
-// ✏️ 啟動編輯模式
+// ✏️ 啟動編輯模式 (含安全備份機制)
 function editMushroom(id) {
-    // 1. 停止目前的倒數計時與通知
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    // 1. 標註此卡片進入編輯狀態，並啟動時空備份
+    card.classList.add('is-editing');
+    card.dataset.backedTime = card.dataset.respawnTime; // 備份絕對重生時間點
+    card.dataset.backedMin = document.getElementById(`m-${id}`) ? document.getElementById(`m-${id}`).value : "";
+    card.dataset.backedSec = document.getElementById(`s-${id}`) ? document.getElementById(`s-${id}`).value : "";
+
+    // 2. 暫停目前的計時器，避免背景繼續跑導致畫面衝突
     if (timers[id]) clearInterval(timers[id]);
     delete notifiedItems[id];
-    
-    const card = document.getElementById(`card-${id}`);
-    if (card) {
-        card.dataset.respawnTime = 'Infinity'; // 將目標時間重設為無限大
-        card.classList.remove('active');       // 移除綠色運作中邊框
-    }
+    card.classList.remove('active'); // 暫時移除綠色運作邊框
 
-    // 2. 抓取所有輸入元件
+    // 3. 抓取 UI 元件
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
     const secInput = document.getElementById(`s-${id}`);
@@ -404,23 +420,70 @@ function editMushroom(id) {
     const btnEdit = document.getElementById(`edit-${id}`);
     const resDiv = document.getElementById(`res-${id}`);
 
-    // 3. 解除輸入框鎖定，並清空時間欄位方便重新輸入
+    // 4. 解鎖輸入框，並清空輸入格方便玩家直接盲打新時間
     if (nameInput) nameInput.disabled = false;
     if (minInput) { minInput.disabled = false; minInput.value = ''; }
     if (secInput) { secInput.disabled = false; secInput.value = ''; }
     if (zoneSel) zoneSel.disabled = false;
     
-    // 4. 切換按鈕顯示，並重設文字
+    // 5. 切換按鈕型態：把編輯按鈕偷偷改造成「取消按鈕」
     if (btnCalc) btnCalc.style.display = 'inline-block';
-    if (btnEdit) btnEdit.style.display = 'none';
+    if (btnEdit) {
+        btnEdit.style.display = 'inline-block';
+        btnEdit.setAttribute('onclick', `cancelEdit('${id}')`); // ✅ 改為觸發取消
+    }
     if (resDiv) resDiv.innerHTML = `<span style="color: #bbb; font-size:0.85rem;">修改時間中...</span>`;
     
-    // 5. 將游標自動聚焦在「分」的輸入框，提升操作速度
+    // 6. 自動聚焦，並重新整理按鈕文字
     if (minInput) minInput.focus();
-    
-    // 6. 存檔並自動同步雲端 (避免另一台裝置還在倒數)
+    updateButtonText(id);
+}
+
+// ↩️ 取消編輯模式 (時空還原)
+function cancelEdit(id) {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    // 1. 拔除編輯標籤，並將按鈕功能改回原本的「編輯」
+    card.classList.remove('is-editing');
+    const btnEdit = document.getElementById(`edit-${id}`);
+    if (btnEdit) btnEdit.setAttribute('onclick', `editMushroom('${id}')`);
+
+    // 2. 抓取原先備份的時空資料
+    const backedTime = card.dataset.backedTime;
+    const nameInput = document.getElementById(`name-${id}`);
+    const minInput = document.getElementById(`m-${id}`);
+    const secInput = document.getElementById(`s-${id}`);
+    const zoneSel = document.getElementById(`zone-${id}`);
+    const btnCalc = document.getElementById(`btn-${id}`);
+
+    // 3. 判斷原本是否有在倒數。如果原本就在倒數，且時間還沒到，就執行還原
+    if (backedTime && backedTime !== 'Infinity' && parseFloat(backedTime) > Date.now()) {
+        if (minInput) minInput.value = card.dataset.backedMin;
+        if (secInput) secInput.value = card.dataset.backedSec;
+        
+        // 重新啟動原本的倒數追蹤
+        resumeTracking(id, parseInt(backedTime));
+    } else {
+        // 如果原本就是空的未設定格子，或是時間在編輯期間早就到了，就退回未設定狀態
+        if (nameInput) nameInput.disabled = false;
+        if (minInput) { minInput.disabled = false; minInput.value = card.dataset.backedMin; }
+        if (secInput) { secInput.disabled = false; secInput.value = card.dataset.backedSec; }
+        if (zoneSel) zoneSel.disabled = false;
+        if (btnCalc) btnCalc.style.display = 'inline-block';
+        if (btnEdit) btnEdit.style.display = 'none';
+        
+        const resDiv = document.getElementById(`res-${id}`);
+        if (resDiv) resDiv.innerHTML = `<span style="color: #bbb; font-size:0.85rem;">未設定</span>`;
+        card.dataset.respawnTime = 'Infinity';
+        card.classList.remove('active');
+    }
+
+    // 4. 更新按鈕外觀並同步地端/雲端
+    updateButtonText(id);
     saveState();
 }
+
 
 window.addEventListener('resize', () => {
     const cards = document.querySelectorAll('.card');
