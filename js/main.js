@@ -297,7 +297,7 @@ function resumeTracking(id, targetTime) {
     if (nameInput) nameInput.disabled = true;
     if (minInput) minInput.disabled = true;
     if (secInput) secInput.disabled = true;
-    if (zoneSel) zoneSel.disabled = true;
+    if (zoneSel) zoneSel.disabled = false;
     
     const btnCalc = document.getElementById(`btn-${id}`);
     if (btnCalc) btnCalc.style.display = 'none';
