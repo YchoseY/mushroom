@@ -363,8 +363,14 @@ function renderRespawnBadges() {
 function toggleRespawnContainer() { isRespawnSectionCollapsed = !isRespawnSectionCollapsed; renderRespawnBadges(); }
 
 function activateRespawnedCard(id) {
-    const card = document.getElementById(`card-${id}`); if (!card) return;
+    const card = document.getElementById(`card-${id}`); 
+    if (!card) return;
+    
+    // 1. 解除隱藏狀態
     card.classList.remove('is-respawned');
+    
+    // 🌟 關鍵魔法：強制瀏覽器立刻重新計算排版，讓它知道卡片已經真實存在於畫面上了
+    void card.offsetWidth; 
     
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
@@ -373,23 +379,25 @@ function activateRespawnedCard(id) {
     const btnCalc = document.getElementById(`btn-${id}`);
     const btnEdit = document.getElementById(`edit-${id}`);
     
+    // 2. 解鎖所有輸入框
     if (nameInput) nameInput.disabled = false;
     if (minInput) minInput.disabled = false;
     if (secInput) secInput.disabled = false;
     if (zoneSel) zoneSel.disabled = false;
     if (btnCalc) btnCalc.style.display = 'inline-block';
-    // 👇 新增這段 👇
     if (btnEdit) btnEdit.style.display = 'none';
-
-    // ✅ 關鍵修正：必須在點擊的同步瞬間立刻 focus()，才能騙過手機瀏覽器喚醒鍵盤
-    if (minInput) minInput.focus();
     
+    // 3. 先讓畫面開始滾動
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // 4. 在沒有 setTimeout 的情況下，同步觸發聚焦與選取！
+    if (minInput) { 
+        minInput.focus(); 
+        minInput.select(); 
+    }
+    
+    // 5. 最後再更新上方的紅色標籤區域
     renderRespawnBadges();
-    setTimeout(() => { 
-        card.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-        // 延遲選取文字依然可以保留，確保畫面穩定後反白
-        if (minInput) { setTimeout(() => { minInput.select(); }, 20); } 
-    }, 80);
 }
 
 
