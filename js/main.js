@@ -369,9 +369,6 @@ function activateRespawnedCard(id) {
     // 1. 解除隱藏狀態
     card.classList.remove('is-respawned');
     
-    // 🌟 關鍵魔法：強制瀏覽器立刻重新計算排版，讓它知道卡片已經真實存在於畫面上了
-    void card.offsetWidth; 
-    
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
     const secInput = document.getElementById(`s-${id}`);
@@ -387,17 +384,23 @@ function activateRespawnedCard(id) {
     if (btnCalc) btnCalc.style.display = 'inline-block';
     if (btnEdit) btnEdit.style.display = 'none';
     
-    // 3. 先讓畫面開始滾動
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // 4. 在沒有 setTimeout 的情況下，同步觸發聚焦與選取！
-    if (minInput) { 
-        minInput.focus(); 
-        minInput.select(); 
-    }
-    
-    // 5. 最後再更新上方的紅色標籤區域
+    // 3. 先更新上方的紅色標籤，讓畫面結構穩定
     renderRespawnBadges();
+
+    // 4. 強制瀏覽器重繪 (Reflow)
+    void card.offsetWidth; 
+    
+    // 5. 終極解法：先同步 focus 喚醒鍵盤，再把滾動跟選取放進微小的延遲中
+    if (minInput) { 
+        minInput.focus(); // ⬅️ 這是叫出鍵盤的絕對關鍵，必須在最外層
+        
+        setTimeout(() => {
+            minInput.select(); // 延遲 50 毫秒選取，避免衝突
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' }); // 鍵盤出來後再滾動
+        }, 50);
+    } else {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 
