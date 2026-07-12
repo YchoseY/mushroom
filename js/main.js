@@ -185,8 +185,8 @@ function addMushroom(data = null) {
     <div class="input-item-wrap">
         <input type="text" id="name-${id}" placeholder="地點" value="${data ? data.name : ''}">
         ${zoneSelectHtml}
-        <input type="number" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
-        <input type="number" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
+        <input type="number" inputmode="numeric" pattern="[0-9]*" id="m-${id}" placeholder="分" min="0" value="${data ? data.min : ''}">:
+        <input type="number" inputmode="numeric" pattern="[0-9]*" id="s-${id}" placeholder="秒" min="0" value="${data ? data.sec : ''}">
         <button class="btn-calc" id="btn-${id}" onclick="startTracking('${id}')">✓</button>
     </div>
     <div class="mobile-row-two">
@@ -381,10 +381,17 @@ function activateRespawnedCard(id) {
     // 👇 新增這段 👇
     if (btnEdit) btnEdit.style.display = 'none';
 
+    // ✅ 關鍵修正：必須在點擊的同步瞬間立刻 focus()，才能騙過手機瀏覽器喚醒鍵盤
+    if (minInput) minInput.focus();
     
     renderRespawnBadges();
-    setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (minInput) { minInput.focus(); setTimeout(() => { minInput.select(); }, 20); } }, 80);
+    setTimeout(() => { 
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+        // 延遲選取文字依然可以保留，確保畫面穩定後反白
+        if (minInput) { setTimeout(() => { minInput.select(); }, 20); } 
+    }, 80);
 }
+
 
 function calculateAppStartSuggestion(totalRemainingSec) {
     const offsetEl = document.getElementById('app-launch-offset');
