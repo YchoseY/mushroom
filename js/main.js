@@ -280,7 +280,7 @@ function startTracking(id) {
     const now = Date.now(); 
     const targetTime = now + (((min * 60) + sec + 300) * 1000);
     
-    delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(true);
+    delete notifiedItems[id]; resumeTracking(id, targetTime); sortMushrooms(); saveState(); ensureEmptyRow(false);
 }
 
 
