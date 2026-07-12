@@ -208,8 +208,8 @@ function createNewOCRCard(location, targetTime, displayMin, displaySec) {
     card.innerHTML = `
         <div class="input-item-wrap">
             <input type="text" id="name-${id}" placeholder="地點" value="${location}">
-            <input type="number" id="m-${id}" placeholder="分" min="0" value="${displayMin}">:
-            <input type="number" id="s-${id}" placeholder="秒" min="0" value="${displaySec}">
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="m-${id}" placeholder="分" min="0" value="${displayMin}">:
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="s-${id}" placeholder="秒" min="0" value="${displaySec}">
             <button class="btn-calc" id="btn-${id}" onclick="confirmOCRCard('${id}')">✓</button>
         </div>
         <div class="mobile-row-two">
