@@ -502,6 +502,25 @@ function cancelEdit(id) {
     saveState();
 }
 
+// 🔄 接收雲端資料後的畫面自動刷新引擎
+function renderLoadedData(dataString) {
+    if (!dataString || dataString === "[]") return;
+    
+    // 1. 將雲端傳來的新資料覆寫到底層
+    localStorage.setItem(DB_KEY, dataString);
+    
+    // 2. 清除所有正在運作的計時器，避免新舊時間衝突
+    for (let key in timers) {
+        clearInterval(timers[key]);
+    }
+    timers = {};
+    notifiedItems = {};
+    
+    // 3. 呼叫系統原生的讀取引擎，重新鋪設所有卡片與倒數計時
+    if (typeof loadState === 'function') {
+        loadState();
+    }
+}
 
 window.addEventListener('resize', () => {
     const cards = document.querySelectorAll('.card');
