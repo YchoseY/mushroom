@@ -8,8 +8,36 @@ function getPackedData() {
 function shareViaURL() {
     const packed = getPackedData();
     if (!packed) return alert('目前沒有資料可以分享喔！');
+    
+    // 取得原始長網址
     const shareUrl = window.location.origin + window.location.pathname + '?share=' + packed;
-    navigator.clipboard.writeText(shareUrl).then(() => { alert('🔗 LINE 分享網址已複製！'); }).catch(() => { prompt("請複製以下網址：", shareUrl); });
+    
+    // 讓按鈕顯示載入中，避免玩家以為卡住
+    const btnUrl = document.querySelector('.btn-url');
+    const originalText = btnUrl ? btnUrl.innerText : "🔗 網址";
+    if (btnUrl) btnUrl.innerText = "⏳ 產生中...";
+    
+    // 呼叫 TinyURL 服務，把可怕的長網址變成短網址
+    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(shareUrl)}`)
+    .then(response => response.text())
+    .then(shortUrl => {
+        if (btnUrl) btnUrl.innerText = originalText;
+        // 複製超短網址
+        navigator.clipboard.writeText(shortUrl).then(() => { 
+            alert(`🔗 專屬短網址已成功複製！\n\n${shortUrl}\n\n(現在可以安心貼到 LINE 給朋友了)`); 
+        }).catch(() => { 
+            prompt("請手動複製以下短網址：", shortUrl); 
+        });
+    })
+    .catch(err => {
+        // 如果遇到網路異常導致縮網址失敗，退回原本的安全備援方案
+        if (btnUrl) btnUrl.innerText = originalText;
+        navigator.clipboard.writeText(shareUrl).then(() => { 
+            alert('⚠️ 縮網址伺服器無回應，已為您複製原始長網址。'); 
+        }).catch(() => { 
+            prompt("請複製以下網址：", shareUrl); 
+        });
+    });
 }
 
 function checkSharedData() {
