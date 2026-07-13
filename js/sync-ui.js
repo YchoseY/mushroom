@@ -328,23 +328,51 @@ function uiModuleMerge(localArray, remoteArray) {
     const mergedMap = new Map();
     let uniqueTimeCounter = Date.now();
     
-    // 1. 先將「本地資料」放入 Map
+    // 1. 先將「本地資料」當作基底放入 Map
     localArray.forEach(item => { 
         if (item.name && item.name.trim() !== "") { 
             mergedMap.set(item.name.trim(), item); 
         } 
     });
     
-    // 2. 處理「遠端資料」
+    // 2. 處理「遠端資料」並進行智慧比較
     remoteArray.forEach(item => {
         if (item.name && item.name.trim() !== "") {
             const nameKey = item.name.trim();
+            
             if (mergedMap.has(nameKey)) { 
-                // ✅ 修正點：本地已經有這個地點，代表本地的修改是最新的！
-                // 我們「什麼都不做」，保留本地資料，避免被遠端的舊時間與舊生活圈覆蓋。
+                const localItem = mergedMap.get(nameKey);
+                
+                // 取出雙方的目標時間來比較
+                const localTime = parseFloat(localItem.targetTime) || Infinity;
+                const remoteTime = parseFloat(item.targetTime) || Infinity;
+                
+                const isLocalActive = localTime !== Infinity && localTime > Date.now();
+                const isRemoteActive = remoteTime !== Infinity && remoteTime > Date.now();
+                
+                let shouldOverride = false;
+
+                if (isRemoteActive && !isLocalActive) {
+                    // 情境 A：雲端在倒數，但手機沒有 -> 雲端贏 (採用電腦設定的新時間)
+                    shouldOverride = true;
+                } else if (isRemoteActive && isLocalActive && localTime !== remoteTime) {
+                    // 情境 B：兩邊都在倒數，但時間不同 -> 雲端贏 (代表另一台裝置剛剛修改了時間)
+                    shouldOverride = true;
+                } else if (!isLocalActive && !isRemoteActive) {
+                    // 情境 C：都沒在倒數，但雲端有設定分類，手機卻是未分類 -> 雲端贏
+                    if (item.zone !== 'all' && localItem.zone === 'all') {
+                        shouldOverride = true;
+                    }
+                }
+
+                // 如果判斷遠端資料比較新或比較有用，就覆寫本地
+                if (shouldOverride) {
+                    item.id = localItem.id; // 保留本地的 ID 避免畫面錯亂
+                    mergedMap.set(nameKey, item);
+                }
             } 
             else { 
-                // 雲端有，但這台手機沒有的新菇點，才加進來
+                // 本地完全沒有的新菇點，直接加入
                 uniqueTimeCounter++; 
                 item.id = uniqueTimeCounter; 
                 mergedMap.set(nameKey, item); 
