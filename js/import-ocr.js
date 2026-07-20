@@ -140,7 +140,6 @@ function preprocessImage(base64Src, callback) {
             // 轉換為灰階 (Grayscale)
             let v = (0.2126*r + 0.7152*g + 0.0722*b);
             
-            // ✅ 拿掉粗暴的 threshold 黑白切斷機制，直接保留灰階層次
             data[i] = v; 
             data[i+1] = v; 
             data[i+2] = v;
