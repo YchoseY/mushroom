@@ -92,70 +92,57 @@ function initOCR() {
 // 處理單一圖片並送交雲端 AI
 function processSingleFile(file) {
     return new Promise((resolve) => {
-        let photoExactTimestamp = Date.now();
+        // 🚀 殺手鐧：直接抓取系統檔案的原始建立時間 (精準到毫秒)，如果極端情況抓不到才用當下時間
+        let photoExactTimestamp = file.lastModified || Date.now();
 
-        EXIF.getData(file, function() {
-            const dateTimeStr = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime");
-            if (dateTimeStr) {
-                const parts = dateTimeStr.split(' ');
-                const dateParts = parts[0].replace(/:/g, '-');
-                const timeParts = parts[1];
-                const parsedDate = new Date(`${dateParts}T${timeParts}`);
-                if (!isNaN(parsedDate.getTime())) { photoExactTimestamp = parsedDate.getTime(); }
-            }
+        const reader = new FileReader();
+        reader.onload = function() {
+            // 將圖片壓縮後再送給 AI，加速傳輸
+            compressImageForAI(reader.result, (compressedBase64) => {
+                
+                // 從 Base64 字串中拔除 data:image/jpeg;base64, 的標頭
+                const pureBase64 = compressedBase64.split(',')[1];
 
-            const reader = new FileReader();
-            reader.onload = function() {
-                // 將圖片壓縮後再送給 AI，加速傳輸
-                compressImageForAI(reader.result, (compressedBase64) => {
-                    
-                    // 從 Base64 字串中拔除 data:image/jpeg;base64, 的標頭
-                    const pureBase64 = compressedBase64.split(',')[1];
-
-                    // 呼叫你的 GAS 雲端大腦 (這裡直接使用 sync-ui.js 裡定義好的 MY_GAS_API_URL)
-                    fetch(MY_GAS_API_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain" },
-                        body: JSON.stringify({
-                            action: "ocr",
-                            image: pureBase64
-                        })
+                // 呼叫你的 GAS 雲端大腦
+                fetch(MY_GAS_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({
+                        action: "ocr",
+                        image: pureBase64
                     })
-                    .then(res => res.json())
-                    .then(resData => {
-                        if (resData.status === "success" && !resData.data.error) {
-                            const aiData = resData.data;
-                            
-                            // 將 AI 回傳的時分秒組裝起來
-                            let hours = parseInt(aiData.hours) || 0;
-                            let mins = parseInt(aiData.mins) || 0;
-                            let secs = parseInt(aiData.secs) || 0;
+                })
+                .then(res => res.json())
+                .then(resData => {
+                    if (resData.status === "success" && !resData.data.error) {
+                        const aiData = resData.data;
+                        
+                        let hours = parseInt(aiData.hours) || 0;
+                        let mins = parseInt(aiData.mins) || 0;
+                        let secs = parseInt(aiData.secs) || 0;
 
-                            let displayMin = (hours * 60) + mins;
-                            let displaySec = secs;
-                            let calculatedTargetTime = Infinity;
+                        let displayMin = (hours * 60) + mins;
+                        let displaySec = secs;
+                        let calculatedTargetTime = Infinity;
 
-                            if (displayMin > 0 || displaySec > 0) {
-                                calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
-                            }
-
-                            // 直接把 AI 抓到的完美地點名稱塞進格子裡
-                            createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec);
-                        } else {
-                            //console.error("AI 辨識錯誤回傳:", resData);
-                            //alert("❌ AI 辨識失敗，請確認網路連線或稍後再試。");
-                            alert("🚨 抓到蟲了！詳細錯誤：" + JSON.stringify(resData));
+                        // 這裡完美使用截圖當下精準到毫秒的時間來加上 AI 算出的秒數
+                        if (displayMin > 0 || displaySec > 0) {
+                            calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
                         }
-                        resolve(); 
-                    })
-                    .catch(err => {
-                        console.error("雲端連線失敗:", err);
-                        resolve(); 
-                    });
+
+                        createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec);
+                    } else {
+                        alert("🚨 抓到蟲了！詳細錯誤：" + JSON.stringify(resData));
+                    }
+                    resolve(); 
+                })
+                .catch(err => {
+                    console.error("雲端連線失敗:", err);
+                    resolve(); 
                 });
-            };
-            reader.readAsDataURL(file);
-        });
+            });
+        };
+        reader.readAsDataURL(file);
     });
 }
 
