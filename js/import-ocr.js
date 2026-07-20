@@ -222,7 +222,11 @@ function createNewOCRCard(location, targetTime, displayMin, displaySec, exactTim
     const container = document.getElementById('tracker-container');
     if(container) container.prepend(card); 
     attachOCREvents(id);
-    if (targetTime !== Infinity && typeof resumeTracking === 'function') { resumeTracking(id, targetTime); }
+    if (targetTime !== Infinity && typeof resumeTracking === 'function') { 
+        resumeTracking(id, targetTime); 
+        // 👇 就是加上這行！強制把被系統藏起來的確認按鈕叫回來
+        document.getElementById(`btn-${id}`).style.display = 'inline-block';
+    }
 }
 
 
