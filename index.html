@@ -73,7 +73,18 @@
         input:focus { border-color: #2ecc71; box-shadow: 0 0 5px rgba(46,204,113,0.4); }
 
         .btn-calc { background-color: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; flex-shrink: 0; }
-        .card.ocr-confirming .btn-calc { background-color: #2575fc; animation: pulseBlue 1.5s infinite; }
+        .card.ocr-confirming .btn-calc { 
+ 		background-color: #2575fc !important; 
+    	display: inline-block !important; /* 🌟 霸王條款：強制顯示，誰都不能把它藏起來！ */
+    	animation: pulseBlue 1.5s infinite;
+		}
+
+/* 順便補上原本漏掉的藍色呼吸燈動畫，讓按鈕看起來更酷 */
+@keyframes pulseBlue {
+    0% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(37, 117, 252, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 117, 252, 0); }
+}
 
         /* 時間區：置右對齊 */
         .result-box { 
