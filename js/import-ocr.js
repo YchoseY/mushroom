@@ -130,7 +130,7 @@ function processSingleFile(file) {
                             calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
                         }
 
-                        createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec);
+                        createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec, photoExactTimestamp);
                     } else {
                         alert("🚨 抓到蟲了！詳細錯誤：" + JSON.stringify(resData));
                     }
@@ -173,23 +173,47 @@ function compressImageForAI(base64Src, callback) {
     img.src = base64Src;
 }
 
-function createNewOCRCard(location, targetTime, displayMin, displaySec) {
+// 1️⃣ 進化版：建立預覽卡片 (補上分類選單與截圖時間備份)
+function createNewOCRCard(location, targetTime, displayMin, displaySec, exactTimestamp) {
     const id = 'OCR_' + Date.now() + '_' + Math.floor(Math.random() * 1000); 
     const card = document.createElement('div');
     card.className = 'card ocr-confirming'; 
     card.id = `card-${id}`;
     card.dataset.respawnTime = targetTime; 
     
+    // ㊙️ 殺手鐧：把截圖當下的精準時間偷偷藏在卡片上，方便稍後手動修改時重算！
+    card.dataset.screenshotTime = exactTimestamp || Date.now();
+
+    // 🔍 智慧查水表：比對舊資料，決定預設分類
+    let preSelectedZone = currentActiveZone === 'all' ? 'all' : currentActiveZone;
+    let currentDb = [];
+    try { currentDb = JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch(e){}
+    const oldItem = currentDb.find(x => x.name.trim() === location.trim());
+    if (oldItem && oldItem.zone) {
+        preSelectedZone = oldItem.zone; // 如果是舊菇點，直接繼承舊分類
+    }
+
+    // 補上完整的分類選單 (與正式卡片相同)
+    const zoneSelectHtml = `
+        <select id="zone-${id}" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
+            <option value="all" ${preSelectedZone==='all'?'selected':''}>🌐</option>
+            <option value="home" ${preSelectedZone==='home'?'selected':''}>🏠</option>
+            <option value="office" ${preSelectedZone==='office'?'selected':''}>🏢</option>
+            <option value="travel" ${preSelectedZone==='travel'?'selected':''}>🏖️</option>
+        </select>
+    `;
+
     card.innerHTML = `
         <div class="input-item-wrap">
             <input type="text" id="name-${id}" placeholder="地點" value="${location}">
+            ${zoneSelectHtml}
             <input type="number" inputmode="numeric" pattern="[0-9]*" id="m-${id}" placeholder="分" min="0" value="${displayMin}">:
             <input type="number" inputmode="numeric" pattern="[0-9]*" id="s-${id}" placeholder="秒" min="0" value="${displaySec}">
             <button class="btn-calc" id="btn-${id}" onclick="confirmOCRCard('${id}')">✓</button>
         </div>
         <div class="mobile-row-two">
             <div class="result-box" id="res-${id}">
-                <span style="color: #2575fc; font-weight: bold; font-size:0.85rem;">🧪 測試中請核對</span>
+                <span style="color: #2575fc; font-weight: bold; font-size:0.85rem;">🧪 測試中請核對 (可改分類)</span>
             </div>
             <button class="btn-delete" onclick="removeOCRConfirmingCard('${id}')">✕</button>
         </div>
@@ -201,14 +225,75 @@ function createNewOCRCard(location, targetTime, displayMin, displaySec) {
     if (targetTime !== Infinity && typeof resumeTracking === 'function') { resumeTracking(id, targetTime); }
 }
 
+
+// 2️⃣ 進化版：確認轉正與智慧合併 (解決重新計算時間的盲點)
 function confirmOCRCard(id) {
     const card = document.getElementById(`card-${id}`);
     if (!card) return;
-    card.classList.remove('ocr-confirming');
-    card.classList.add('active');
-    if (typeof sortMushrooms === 'function') sortMushrooms();
-    saveState(); 
-    if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
+
+    // 1. 抓取畫面上最新的資料
+    const nameVal = document.getElementById(`name-${id}`).value.trim();
+    const zoneVal = document.getElementById(`zone-${id}`).value;
+    const mVal = parseInt(document.getElementById(`m-${id}`).value) || 0;
+    const sVal = parseInt(document.getElementById(`s-${id}`).value) || 0;
+    
+    // 2. 完美時間重算：利用備份的截圖時間 + 手動修改的新時間 + 5分鐘冷卻
+    const screenshotTime = parseFloat(card.dataset.screenshotTime);
+    let finalTargetTime = Infinity;
+    if (mVal > 0 || sVal > 0) {
+        finalTargetTime = screenshotTime + (((mVal * 60) + sVal + 300) * 1000);
+    }
+
+    // 3. 讀取本機資料庫進行「重複判斷合併」
+    let currentDb = [];
+    try { currentDb = JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch(e){}
+    
+    const existingIndex = currentDb.findIndex(x => x.name.trim() === nameVal);
+
+    if (existingIndex !== -1) {
+        // 🚨 狀況 A：舊菇點合併
+        // 刪除這張預覽卡片
+        removeOCRConfirmingCard(id);
+        
+        // 喚醒舊卡片並覆寫新時間與新分類
+        const oldId = currentDb[existingIndex].id;
+        document.getElementById(`m-${oldId}`).value = mVal;
+        document.getElementById(`s-${oldId}`).value = sVal;
+        
+        // 觸發舊卡片的重新計算與存檔
+        if (typeof resumeTracking === 'function') resumeTracking(oldId, finalTargetTime);
+        
+        // 偷改下拉選單並觸發過濾
+        const oldZoneSelect = document.getElementById(`zone-${oldId}`);
+        if (oldZoneSelect) {
+            oldZoneSelect.value = zoneVal;
+            document.getElementById(`card-${oldId}`).dataset.zone = zoneVal;
+            if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone();
+        }
+        
+        // 儲存並同步雲端
+        saveState();
+        
+    } else {
+        // 🌟 狀況 B：新菇點轉正
+        // 拔除藍色光暈，切換成正式綠色卡片
+        card.classList.remove('ocr-confirming');
+        card.classList.add('active');
+        
+        // 將重新算好的精準時間蓋回去
+        card.dataset.respawnTime = finalTargetTime;
+        card.dataset.zone = zoneVal; // 正式賦予分類血統
+        
+        // 修改按鈕行為 (轉為一般卡片的運作模式)
+        document.getElementById(`btn-${id}`).setAttribute('onclick', `startTracking('${id}')`);
+        
+        // 重新排版與存檔
+        if (typeof resumeTracking === 'function') resumeTracking(id, finalTargetTime);
+        if (typeof sortMushrooms === 'function') sortMushrooms();
+        saveState(); 
+        if (typeof ensureEmptyRow === 'function') ensureEmptyRow(false); 
+        if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone();
+    }
 }
 
 function attachOCREvents(id) {
