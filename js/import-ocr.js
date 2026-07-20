@@ -142,8 +142,9 @@ function processSingleFile(file) {
                             // 直接把 AI 抓到的完美地點名稱塞進格子裡
                             createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec);
                         } else {
-                            console.error("AI 辨識錯誤回傳:", resData);
-                            alert("❌ AI 辨識失敗，請確認網路連線或稍後再試。");
+                            //console.error("AI 辨識錯誤回傳:", resData);
+                            //alert("❌ AI 辨識失敗，請確認網路連線或稍後再試。");
+                            alert("🚨 抓到蟲了！詳細錯誤：" + JSON.stringify(resData));
                         }
                         resolve(); 
                     })
