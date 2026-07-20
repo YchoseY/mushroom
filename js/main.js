@@ -368,6 +368,13 @@ function activateRespawnedCard(id) {
     
     // 1. 解除隱藏狀態
     card.classList.remove('is-respawned');
+
+    // 👇強制把它的「舊死亡時間」設定為無限大，並徹底刪除定時器殘影
+    card.dataset.respawnTime = 'Infinity';
+    if (timers[id]) {
+        clearInterval(timers[id]);
+        delete timers[id];
+    }
     
     const nameInput = document.getElementById(`name-${id}`);
     const minInput = document.getElementById(`m-${id}`);
