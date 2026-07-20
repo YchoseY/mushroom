@@ -89,6 +89,7 @@ function initOCR() {
     });
 }
 
+// 處理單一圖片並送交雲端 AI
 function processSingleFile(file) {
     return new Promise((resolve) => {
         let photoExactTimestamp = Date.now();
@@ -105,14 +106,49 @@ function processSingleFile(file) {
 
             const reader = new FileReader();
             reader.onload = function() {
-                preprocessImage(reader.result, (processedImgBase64) => {
-                    Tesseract.recognize(processedImgBase64, 'chi_tra+eng')
-                    .then(({ data: { text } }) => {
-                        parseOCRResult(text, photoExactTimestamp);
+                // 將圖片壓縮後再送給 AI，加速傳輸
+                compressImageForAI(reader.result, (compressedBase64) => {
+                    
+                    // 從 Base64 字串中拔除 data:image/jpeg;base64, 的標頭
+                    const pureBase64 = compressedBase64.split(',')[1];
+
+                    // 呼叫你的 GAS 雲端大腦 (這裡直接使用 sync-ui.js 裡定義好的 MY_GAS_API_URL)
+                    fetch(MY_GAS_API_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain" },
+                        body: JSON.stringify({
+                            action: "ocr",
+                            image: pureBase64
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(resData => {
+                        if (resData.status === "success" && !resData.data.error) {
+                            const aiData = resData.data;
+                            
+                            // 將 AI 回傳的時分秒組裝起來
+                            let hours = parseInt(aiData.hours) || 0;
+                            let mins = parseInt(aiData.mins) || 0;
+                            let secs = parseInt(aiData.secs) || 0;
+
+                            let displayMin = (hours * 60) + mins;
+                            let displaySec = secs;
+                            let calculatedTargetTime = Infinity;
+
+                            if (displayMin > 0 || displaySec > 0) {
+                                calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
+                            }
+
+                            // 直接把 AI 抓到的完美地點名稱塞進格子裡
+                            createNewOCRCard(aiData.name || "截圖辨識點位", calculatedTargetTime, displayMin, displaySec);
+                        } else {
+                            console.error("AI 辨識錯誤回傳:", resData);
+                            alert("❌ AI 辨識失敗，請確認網路連線或稍後再試。");
+                        }
                         resolve(); 
                     })
                     .catch(err => {
-                        console.error("OCR失敗:", err);
+                        console.error("雲端連線失敗:", err);
                         resolve(); 
                     });
                 });
@@ -122,97 +158,31 @@ function processSingleFile(file) {
     });
 }
 
-function preprocessImage(base64Src, callback) {
+// 🖼️ 專為 AI 設計的影像壓縮函式 (AI 眼睛很好，不需要轉黑白，只要縮小尺寸就能光速傳輸)
+function compressImageForAI(base64Src, callback) {
     const img = new Image();
     img.onload = function() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
         
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imgData.data;
+        // 限制圖片最大寬度為 800px，既能保留文字清晰度，又能讓上傳速度翻倍
+        const MAX_WIDTH = 800;
+        let width = img.width;
+        let height = img.height;
         
-        for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i+1], b = data[i+2];
-            // 轉換為灰階 (Grayscale)
-            let v = (0.2126*r + 0.7152*g + 0.0722*b);
-            
-            data[i] = v; 
-            data[i+1] = v; 
-            data[i+2] = v;
+        if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
         }
-        ctx.putImageData(imgData, 0, 0);
-        callback(canvas.toDataURL());
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // 輸出品質設定為 0.8
+        callback(canvas.toDataURL('image/jpeg', 0.8));
     };
     img.src = base64Src;
-}
-
-function parseOCRResult(text, photoExactTimestamp) {
-    let locationName = "截圖辨識點位";
-    const lines = text.split('\n');
-    
-    for(let line of lines) {
-        let rawLine = line.trim();
-        // 稍微清理，但絕對保留 > 這個關鍵特徵
-        let cleanLine = rawLine.replace(/[\s\|\[\]\(\):;\-]/g, ''); 
-        
-        if (cleanLine.length < 2) continue; // 太短的雜訊不要
-        
-        // 🛑 黑名單：排除遊戲中絕對不是地點的「已知 UI 介面文字」
-        if (
-            cleanLine.includes("巨大") || cleanLine.includes("蘑菇") || 
-            cleanLine.includes("參加") || cleanLine.includes("前往") || 
-            cleanLine.includes("工作力") || cleanLine.includes("特殊活動") ||
-            cleanLine.includes("剩下") || cleanLine.includes("飾品") ||
-            cleanLine.match(/^[0-9A-Za-z]+$/) // 排除純數字或純英文(如電量、時間)
-        ) {
-            continue;
-        }
-
-        // 🎯 必殺特徵：如果這行文字帶有 >，那 99% 就是地點按鈕！(例如：日新臨時攤販市場 >)
-        if (rawLine.includes(">") || rawLine.includes("＞") || rawLine.includes("》")) {
-            locationName = cleanLine.replace(/[><＞》]/g, ''); // 確定是地點後，再把 > 拔掉
-            break;
-        }
-        
-        // 🎯 備案：如果沒有 >，但這行字撐過了上面的黑名單考驗，我們就大膽採用它！
-        locationName = cleanLine.replace(/[><＞》]/g, '');
-        break;
-    }
-
-    const numberGroups = text.match(/\d+/g);
-    let hours = 0, mins = 0, secs = 0;
-    let hasFoundValidTime = false;
-
-    if (numberGroups && numberGroups.length >= 2) {
-        let extractedNums = numberGroups.map(n => parseInt(n)).filter(n => !isNaN(n));
-        for (let i = extractedNums.length - 1; i >= 1; i--) {
-            let potentialSec = extractedNums[i];
-            let potentialMin = extractedNums[i-1];
-            let potentialHour = (i >= 2) ? extractedNums[i-2] : 0;
-
-            if (potentialSec <= 60 && potentialMin <= 60) {
-                secs = potentialSec;
-                mins = potentialMin;
-                hours = (potentialHour < 24 && i >= 2) ? potentialHour : 0;
-                hasFoundValidTime = true;
-                break;
-            }
-        }
-    }
-
-    let calculatedTargetTime = Infinity;
-    let displayMin = ""; let displaySec = "";
-
-    if (hasFoundValidTime) {
-        displayMin = (hours * 60) + mins;
-        displaySec = secs;
-        calculatedTargetTime = photoExactTimestamp + (((hours * 3600) + (mins * 60) + secs + 300) * 1000);
-    }
-
-    createNewOCRCard(locationName, calculatedTargetTime, displayMin, displaySec);
 }
 
 function createNewOCRCard(location, targetTime, displayMin, displaySec) {
