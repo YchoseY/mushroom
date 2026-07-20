@@ -137,10 +137,13 @@ function preprocessImage(base64Src, callback) {
         
         for (let i = 0; i < data.length; i += 4) {
             let r = data[i], g = data[i+1], b = data[i+2];
+            // 轉換為灰階 (Grayscale)
             let v = (0.2126*r + 0.7152*g + 0.0722*b);
-            let threshold = 140;
-            let finalVal = v > threshold ? 255 : 0;
-            data[i] = finalVal; data[i+1] = finalVal; data[i+2] = finalVal;
+            
+            // ✅ 拿掉粗暴的 threshold 黑白切斷機制，直接保留灰階層次
+            data[i] = v; 
+            data[i+1] = v; 
+            data[i+2] = v;
         }
         ctx.putImageData(imgData, 0, 0);
         callback(canvas.toDataURL());
@@ -151,18 +154,34 @@ function preprocessImage(base64Src, callback) {
 function parseOCRResult(text, photoExactTimestamp) {
     let locationName = "截圖辨識點位";
     const lines = text.split('\n');
+    
     for(let line of lines) {
-        let cleanLine = line.trim().replace(/[>><\|\[\]\(\):;\-\s]/g, '');
-        if (cleanLine.length >= 2 && (
-            cleanLine.includes("展示") || cleanLine.includes("系統") || 
-            cleanLine.includes("公園") || cleanLine.includes("廟") || 
-            cleanLine.includes("教堂") || cleanLine.includes("郵局") || 
-            cleanLine.includes("大樓") || cleanLine.includes("中心") || 
-            cleanLine.includes("廣場") || cleanLine.includes("神秘")
-        )) {
-            locationName = cleanLine;
+        let rawLine = line.trim();
+        // 稍微清理，但絕對保留 > 這個關鍵特徵
+        let cleanLine = rawLine.replace(/[\s\|\[\]\(\):;\-]/g, ''); 
+        
+        if (cleanLine.length < 2) continue; // 太短的雜訊不要
+        
+        // 🛑 黑名單：排除遊戲中絕對不是地點的「已知 UI 介面文字」
+        if (
+            cleanLine.includes("巨大") || cleanLine.includes("蘑菇") || 
+            cleanLine.includes("參加") || cleanLine.includes("前往") || 
+            cleanLine.includes("工作力") || cleanLine.includes("特殊活動") ||
+            cleanLine.includes("剩下") || cleanLine.includes("飾品") ||
+            cleanLine.match(/^[0-9A-Za-z]+$/) // 排除純數字或純英文(如電量、時間)
+        ) {
+            continue;
+        }
+
+        // 🎯 必殺特徵：如果這行文字帶有 >，那 99% 就是地點按鈕！(例如：日新臨時攤販市場 >)
+        if (rawLine.includes(">") || rawLine.includes("＞") || rawLine.includes("》")) {
+            locationName = cleanLine.replace(/[><＞》]/g, ''); // 確定是地點後，再把 > 拔掉
             break;
         }
+        
+        // 🎯 備案：如果沒有 >，但這行字撐過了上面的黑名單考驗，我們就大膽採用它！
+        locationName = cleanLine.replace(/[><＞》]/g, '');
+        break;
     }
 
     const numberGroups = text.match(/\d+/g);
