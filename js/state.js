@@ -94,21 +94,19 @@ function loadState() {
             if (data.length > 0) {
                 let hasEmpty = false; 
                 data = data.filter(item => { 
+                    if (item.isDeleted) return false; // 🛑 核心防禦：絕對不把墓碑畫到畫面上！
                     const isEmpty = (item.name.trim() === "" && item.min === "" && item.sec === "" && item.targetTime === "Infinity"); 
                     if (isEmpty) { if (!hasEmpty) { hasEmpty = true; return true; } return false; } 
                     return true; 
                 });
                 
                 data.forEach(item => {
-                    // 🛡️ 安全防護防爆：如果是以前沒有 zone 屬性的老菇點，開機時一律全自動給它 'all' (未分類)
                     if (!item.zone) { item.zone = 'all'; }
                     addMushroom(item); 
                 }); 
                 
                 if (typeof sortMushrooms === 'function') sortMushrooms(); 
                 if (typeof renderRespawnBadges === 'function') renderRespawnBadges(); 
-                
-                // 🚀 載入完畢後，根據當前的分頁立刻做一次視覺過濾
                 if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone();
                 
                 saveState(); 
