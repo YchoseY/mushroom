@@ -327,59 +327,73 @@ function unlinkSyncKey() {
 function uiModuleMerge(localArray, remoteArray) {
     const mergedMap = new Map();
     let uniqueTimeCounter = Date.now();
-    
-    // 1. 先將「本地資料」當作基底放入 Map
-    localArray.forEach(item => { 
-        if (item.name && item.name.trim() !== "") { 
-            mergedMap.set(item.name.trim(), item); 
-        } 
-    });
-    
-    // 2. 處理「遠端資料」並進行智慧比較
-    remoteArray.forEach(item => {
-        if (item.name && item.name.trim() !== "") {
-            const nameKey = item.name.trim();
+
+    // 🧠 核心審判官：判斷這筆資料該生該死
+    const processItem = (item) => {
+        const nameKey = item.name ? item.name.trim() : "";
+        if (nameKey === "") return;
+
+        if (mergedMap.has(nameKey)) {
+            const existing = mergedMap.get(nameKey);
+
+            // 狀況一：兩邊都是墓碑，留下最新的死亡時間
+            if (existing.isDeleted && item.isDeleted) {
+                if (item.deleteTime > existing.deleteTime) mergedMap.set(nameKey, item);
+                return;
+            }
             
-            if (mergedMap.has(nameKey)) { 
-                const localItem = mergedMap.get(nameKey);
-                
-                // 取出雙方的目標時間來比較
-                const localTime = parseFloat(localItem.targetTime) || Infinity;
-                const remoteTime = parseFloat(item.targetTime) || Infinity;
-                
-                const isLocalActive = localTime !== Infinity && localTime > Date.now();
-                const isRemoteActive = remoteTime !== Infinity && remoteTime > Date.now();
-                
-                let shouldOverride = false;
-
-                if (isRemoteActive && !isLocalActive) {
-                    // 情境 A：雲端在倒數，但手機沒有 -> 雲端贏 (採用電腦設定的新時間)
-                    shouldOverride = true;
-                } else if (isRemoteActive && isLocalActive && localTime !== remoteTime) {
-                    // 情境 B：兩邊都在倒數，但時間不同 -> 雲端贏 (代表另一台裝置剛剛修改了時間)
-                    shouldOverride = true;
-                } else if (!isLocalActive && !isRemoteActive) {
-                    // 情境 C：都沒在倒數，但雲端有設定分類，手機卻是未分類 -> 雲端贏
-                    if (item.zone !== 'all' && localItem.zone === 'all') {
-                        shouldOverride = true;
-                    }
-                }
-
-                // 如果判斷遠端資料比較新或比較有用，就覆寫本地
-                if (shouldOverride) {
-                    item.id = localItem.id; // 保留本地的 ID 避免畫面錯亂
+            // 狀況二：原本是墓碑，雲端傳來活著的卡片
+            if (existing.isDeleted && !item.isDeleted) {
+                const itemUpdate = item.updateTime || 0;
+                // 如果這張活卡片的「更新時間」比「死亡時間」還新 (代表玩家反悔重新新增了)
+                if (itemUpdate > existing.deleteTime) {
+                    item.id = existing.id;
                     mergedMap.set(nameKey, item);
                 }
-            } 
-            else { 
-                // 本地完全沒有的新菇點，直接加入
-                uniqueTimeCounter++; 
-                item.id = uniqueTimeCounter; 
-                mergedMap.set(nameKey, item); 
+                return; // 否則，墓碑法力依然有效，直接擋下殭屍
             }
+            
+            // 狀況三：原本是活著的卡片，雲端傳來墓碑 (另一台裝置剛剛刪了它)
+            if (!existing.isDeleted && item.isDeleted) {
+                const existingUpdate = existing.updateTime || 0;
+                if (item.deleteTime > existingUpdate) {
+                    mergedMap.set(nameKey, item); // 墓碑擊殺活著的卡片！
+                }
+                return;
+            }
+
+            // 狀況四：兩邊都活著，進行一般邏輯合併
+            const localTime = parseFloat(existing.targetTime) || Infinity;
+            const remoteTime = parseFloat(item.targetTime) || Infinity;
+            const isLocalActive = localTime !== Infinity && localTime > Date.now();
+            const isRemoteActive = remoteTime !== Infinity && remoteTime > Date.now();
+            let shouldOverride = false;
+
+            if (isRemoteActive && !isLocalActive) {
+                shouldOverride = true;
+            } else if (isRemoteActive && isLocalActive && localTime !== remoteTime) {
+                shouldOverride = true;
+            } else if (!isLocalActive && !isRemoteActive && item.zone !== 'all' && existing.zone === 'all') {
+                shouldOverride = true;
+            } else if (item.updateTime > (existing.updateTime || 0)) {
+                shouldOverride = true; // 時間戳記較新的贏
+            }
+
+            if (shouldOverride) {
+                item.id = existing.id;
+                mergedMap.set(nameKey, item);
+            }
+        } else {
+            // 完全沒見過的新地點（或新墓碑），直接放行
+            uniqueTimeCounter++;
+            if (!item.id) item.id = uniqueTimeCounter;
+            mergedMap.set(nameKey, item);
         }
-    });
-    
+    };
+
+    localArray.forEach(processItem);
+    remoteArray.forEach(processItem);
+
     return Array.from(mergedMap.values());
 }
 
