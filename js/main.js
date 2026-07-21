@@ -319,9 +319,28 @@ function resumeTracking(id, targetTime) {
 
 function removeMushroom(id) {
     if (id.startsWith('OCR_')) { if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); return; }
+    
+    // 👇 新增墓碑機制：在畫面刪除前，將這顆菇標記為「已死亡」並押上時間
+    const nameInput = document.getElementById(`name-${id}`);
+    const mushroomName = nameInput ? nameInput.value.trim() : "";
+    
     if (timers[id]) clearInterval(timers[id]);
-    delete notifiedItems[id]; const card = document.getElementById(`card-${id}`); if (card) card.remove();
-    saveState(); renderRespawnBadges(); filterUiByCurrentZone(); 
+    delete notifiedItems[id]; 
+    const card = document.getElementById(`card-${id}`); 
+    if (card) card.remove();
+    
+    if (mushroomName !== "") {
+        let db = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+        // 清除舊有的同名紀錄，建立最新時刻的墓碑
+        db = db.filter(x => x.name !== mushroomName);
+        db.push({ name: mushroomName, isDeleted: true, deleteTime: Date.now() });
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+    }
+    // 👆 墓碑建立完成
+    
+    saveState(); 
+    if (typeof renderRespawnBadges === 'function') renderRespawnBadges(); 
+    if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone(); 
 }
 
 function removeCard(id) { removeMushroom(id); }
