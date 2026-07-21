@@ -37,32 +37,46 @@ function saveState() {
     
     const cards = document.querySelectorAll('.card'); 
     const data = [];
-    
-    // 讀取目前的底層資料，當作安全基底
     let currentDb = [];
     try { currentDb = JSON.parse(localStorage.getItem(DB_KEY) || '[]'); } catch(e){}
+    
+    const activeNames = new Set(); // 記錄目前畫面上還活著的菇點
     
     cards.forEach(card => {
         const id = card.id.replace('card-', ''); 
         const nameEl = document.getElementById(`name-${id}`);
-        
-        // 優先從現有的底層資料庫或 dataset 裡抓取已經被鎖定的 zone 血統
         const oldItem = currentDb.find(x => x.id == id);
         const zoneVal = card.dataset.zone || (oldItem && oldItem.zone ? oldItem.zone : 'all');
 
         if (nameEl) { 
+            const mName = nameEl.value.trim();
+            if (mName) activeNames.add(mName);
             data.push({ 
                 id: id, 
                 name: nameEl.value, 
                 min: document.getElementById(`m-${id}`) ? document.getElementById(`m-${id}`).value : "", 
                 sec: document.getElementById(`s-${id}`) ? document.getElementById(`s-${id}`).value : "", 
                 targetTime: card.dataset.respawnTime,
-                zone: zoneVal
+                zone: zoneVal,
+                updateTime: Date.now() // 🕒 更新時間戳記，用來在雲端對抗墓碑
             }); 
         }
     });
+    
+    // 👇 清道夫系統：保留墓碑，但自動火化超過 90 天的屍體
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    currentDb.forEach(item => {
+        if (item.isDeleted) {
+            // 如果死亡時間未滿 90 天，且玩家沒有「手動重新新增」同名的菇點，就繼續保留墓碑
+            if (now - item.deleteTime < NINETY_DAYS_MS && !activeNames.has(item.name.trim())) {
+                data.push(item);
+            }
+        }
+    });
+    // 👆 清道夫運作結束
+    
     localStorage.setItem(DB_KEY, JSON.stringify(data));
-    // 🚀 【終極核心修正】只要地端資料庫一變動，立刻牽動巡邏大腦送上雲端後台！
     if (typeof uploadToCloudBackground === 'function') {
         uploadToCloudBackground();
     }
