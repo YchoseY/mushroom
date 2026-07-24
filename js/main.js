@@ -318,17 +318,27 @@ function resumeTracking(id, targetTime) {
 }
 
 function removeMushroom(id) {
-    if (id.startsWith('OCR_')) { if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); return; }
+    // 1️⃣ 統一在最前面抓取卡片 (解決重複宣告變數的問題)
+    const card = document.getElementById(`card-${id}`);
     
-    // 👇 新增墓碑機制：在畫面刪除前，將這顆菇標記為「已死亡」並押上時間
+    // 2️⃣ 修正防呆攔截：只有「真正還在測試中」的藍色卡片，才用預覽刪除法
+    if (id.startsWith('OCR_') && card && card.classList.contains('ocr-confirming')) { 
+        if (typeof removeOCRConfirmingCard === 'function') removeOCRConfirmingCard(id); 
+        return; 
+    }
+    
+    // 3️⃣ 抓取名稱準備建立墓碑
     const nameInput = document.getElementById(`name-${id}`);
     const mushroomName = nameInput ? nameInput.value.trim() : "";
     
+    // 4️⃣ 清除計時器與通知
     if (timers[id]) clearInterval(timers[id]);
     delete notifiedItems[id]; 
-    const card = document.getElementById(`card-${id}`); 
+    
+    // 5️⃣ 移除畫面上的卡片 (直接使用最上面已經宣告好的 card 變數)
     if (card) card.remove();
     
+    // 6️⃣ 建立 90 天墓碑機制 (防殭屍菇)
     if (mushroomName !== "") {
         let db = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
         // 清除舊有的同名紀錄，建立最新時刻的墓碑
@@ -336,9 +346,9 @@ function removeMushroom(id) {
         db.push({ name: mushroomName, isDeleted: true, deleteTime: Date.now() });
         localStorage.setItem(DB_KEY, JSON.stringify(db));
     }
-    // 👆 墓碑建立完成
     
-    saveState(); 
+    // 7️⃣ 存檔與重繪畫面
+    if (typeof saveState === 'function') saveState(); 
     if (typeof renderRespawnBadges === 'function') renderRespawnBadges(); 
     if (typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone(); 
 }
