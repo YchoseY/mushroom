@@ -195,7 +195,7 @@ function createNewOCRCard(location, targetTime, displayMin, displaySec, exactTim
 
     // 補上完整的分類選單 (與正式卡片相同)
     const zoneSelectHtml = `
-        <select id="zone-${id}" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
+        <select id="zone-${id}" onchange="document.getElementById('card-${id}').dataset.zone = this.value; if(typeof saveState === 'function') saveState(); if(typeof filterUiByCurrentZone === 'function') filterUiByCurrentZone();" style="padding: 6px 2px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.85rem; background: #fff; outline: none; cursor: pointer; width: 44px; text-align: center; font-family: sans-serif; flex-shrink: 0; margin-right: 2px;">
             <option value="all" ${preSelectedZone==='all'?'selected':''}>🌐</option>
             <option value="home" ${preSelectedZone==='home'?'selected':''}>🏠</option>
             <option value="office" ${preSelectedZone==='office'?'selected':''}>🏢</option>
