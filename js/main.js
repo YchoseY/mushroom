@@ -538,6 +538,36 @@ function cancelEdit(id) {
     saveState();
 }
 
+// ==========================================
+// 🌸 皮克敏 App 專屬啟動器邏輯 (懸浮按鈕)
+// ==========================================
+function setupPikminLauncher() {
+    const launchBtn = document.getElementById('launch-pikmin-btn');
+    if (!launchBtn) return;
+
+    // 1. 偵測使用者是否使用行動裝置 (iOS 或 Android)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // 2. 如果是手機，就把按鈕顯示出來 (使用 flex 讓小花圖案完美置中)
+    if (isMobile) {
+        launchBtn.style.display = 'flex';
+        
+        // 3. 綁定點擊事件，呼叫皮克敏專屬 URL Scheme
+        launchBtn.addEventListener('click', () => {
+            // 喚醒皮克敏 App
+            window.location.href = 'pikminbloom://';
+            
+            // 視覺回饋：按下去的瞬間會有稍微縮小的 Q 彈感
+            launchBtn.style.transform = 'scale(0.85)';
+            setTimeout(() => { launchBtn.style.transform = 'scale(1)'; }, 150);
+        });
+    }
+}
+
+// 確保網頁載入後執行此設定
+document.addEventListener('DOMContentLoaded', setupPikminLauncher);
+
+
 // 🔄 接收雲端資料後的畫面自動刷新引擎
 function renderLoadedData(dataString) {
     if (!dataString || dataString === "[]") return;
