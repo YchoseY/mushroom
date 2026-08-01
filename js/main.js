@@ -539,34 +539,62 @@ function cancelEdit(id) {
 }
 
 // ==========================================
-// 🌸 皮克敏 App 專屬啟動器邏輯 (懸浮按鈕)
+// 🌸 皮克敏 App 專屬啟動器邏輯 (JS 強制注入懸浮按鈕版)
 // ==========================================
 function setupPikminLauncher() {
-    const launchBtn = document.getElementById('launch-pikmin-btn');
-    if (!launchBtn) return;
-
     // 1. 偵測使用者是否使用行動裝置 (iOS 或 Android)
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // 如果不是手機，直接結束，連按鈕都不用建立
+    if (!isMobile) return;
+    
+    // 檢查是否已經建立過，避免重複建立
+    if (document.getElementById('launch-pikmin-btn')) return;
 
-    // 2. 如果是手機，就把按鈕顯示出來 (使用 flex 讓小花圖案完美置中)
-    if (isMobile) {
-        launchBtn.style.display = 'flex';
+    // 2. 用 JS 憑空創造按鈕，確保它不受任何 HTML 容器干擾
+    const launchBtn = document.createElement('button');
+    launchBtn.id = 'launch-pikmin-btn';
+    launchBtn.innerHTML = '🌸';
+    
+    // 3. 強制賦予絕對有效的 CSS 樣式 (固定右下角 + 滿級 z-index)
+    Object.assign(launchBtn.style, {
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        width: '60px',
+        height: '60px',
+        backgroundColor: '#ff4757',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        fontSize: '28px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+        zIndex: '999999', // 絕對最上層
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'transform 0.1s',
+        margin: '0',
+        padding: '0'
+    });
+
+    // 4. 綁定點擊事件，呼叫皮克敏專屬 URL Scheme
+    launchBtn.addEventListener('click', () => {
+        // 喚醒皮克敏 App
+        window.location.href = 'pikminbloom://';
         
-        // 3. 綁定點擊事件，呼叫皮克敏專屬 URL Scheme
-        launchBtn.addEventListener('click', () => {
-            // 喚醒皮克敏 App
-            window.location.href = 'pikminbloom://';
-            
-            // 視覺回饋：按下去的瞬間會有稍微縮小的 Q 彈感
-            launchBtn.style.transform = 'scale(0.85)';
-            setTimeout(() => { launchBtn.style.transform = 'scale(1)'; }, 150);
-        });
-    }
+        // 視覺回饋：按下去的瞬間會有稍微縮小的 Q 彈感
+        launchBtn.style.transform = 'scale(0.85)';
+        setTimeout(() => { launchBtn.style.transform = 'scale(1)'; }, 150);
+    });
+
+    // 5. 將按鈕強制掛載到 body 的最外層 (跳脫所有排版限制)
+    document.body.appendChild(launchBtn);
 }
 
 // 確保網頁載入後執行此設定
 document.addEventListener('DOMContentLoaded', setupPikminLauncher);
-
 
 // 🔄 接收雲端資料後的畫面自動刷新引擎
 function renderLoadedData(dataString) {
