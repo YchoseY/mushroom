@@ -326,8 +326,7 @@ function removeOCRConfirmingCard(id) {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const pasteBtn = document.getElementById('paste-ocr-btn');
-    // 👇 請把這裡的 'ocr-upload-input' 換成你原本用來上傳檔案的 <input type="file"> 的 ID
-    const fileInput = document.getElementById('ocr-upload-input'); 
+    const fileInput = document.getElementById('file-input'); 
 
     if (!pasteBtn || !fileInput) return;
 
