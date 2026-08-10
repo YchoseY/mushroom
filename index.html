@@ -142,11 +142,11 @@
     </div>
 
     <div class="import-twin-row">
-        <button class="btn-main btn-twin-ocr" onclick="openOcrModal()">📸 截圖自動辨識 (🧪測試中)</button>
+        <button class="btn-main btn-twin-ocr" onclick="openOcrModal()">📸 截圖自動辨識</button>
         <button class="btn-main btn-twin-import" onclick="openImportModal()">📥 匯入好友戰情 / 掃描 QR</button>
     </div>
     
-    <div class="test-notice-bar">⚠️ 截圖辨識功能目前為實驗測試階段，請務必手動確認數據</div>
+    <!--<div class="test-notice-bar">⚠️ 截圖辨識功能目前為實驗測試階段，請務必手動確認數據</div> -->
     
 	<!-- 🎯 完美安插在此位置：生活圈分頁控制列 -->
     <div id="zone-tabs-container" style="display: flex; justify-content: center; gap: 8px; margin: 10px auto 15px auto; max-width: 500px; flex-wrap: wrap;">
@@ -162,7 +162,7 @@
 
     <div class="modal-backdrop" id="ocr-backdrop" onclick="closeOcrModal()"></div>
     <div class="modal" id="ocrModal">
-        <h3>📸 上傳打菇截圖辨識 (🧪測試階段)</h3>
+        <h3>📸 上傳打菇截圖辨識</h3>
         <input type="file" id="file-input" accept="image/*" multiple>
         <label for="file-input" class="btn-ocr-trigger-upload">選擇手機截圖 (可選多張)</label>
 		<!-- 📋 👇 這是新加的「貼上截圖」按鈕 (貼在 label 下方) 👇 -->
@@ -172,9 +172,9 @@
 		<!-- 📋 👆 按鈕結束 👆 -->
         <div id="ocr-loading-status">🕵️‍♂️ 正在辨識第 1 張照片...</div>
         <div class="ocr-modal-hint">
-            <b>🧪 測試階段注意事項：</b><br>
+            <b>🧪 注意事項：</b><br>
             • 遊戲背景太花綠時，地點名稱和時間數字可能偶爾有誤。<br>
-            • <b>優化福利</b>：辨識後格子會自動進入「全選反白狀態」，按 Enter 即可快速盲打校正！
+            • 辨識後格子會自動進入「待確認狀態」，按下 Enter 後才會儲存！
         </div>
         <button class="btn-main btn-add" onclick="closeOcrModal()" style="background:#aaa; color:#fff; margin-top: 15px; width: 100%;">關閉</button>
     </div>
