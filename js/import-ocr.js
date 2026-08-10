@@ -320,3 +320,57 @@ function removeOCRConfirmingCard(id) {
     const card = document.getElementById(`card-${id}`);
     if (card) card.remove();
 }
+
+// ==========================================
+// 📋 剪貼簿讀取與自動觸發辨識機制
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const pasteBtn = document.getElementById('paste-ocr-btn');
+    // 👇 請把這裡的 'ocr-upload-input' 換成你原本用來上傳檔案的 <input type="file"> 的 ID
+    const fileInput = document.getElementById('ocr-upload-input'); 
+
+    if (!pasteBtn || !fileInput) return;
+
+    pasteBtn.addEventListener('click', async () => {
+        try {
+            // 1. 檢查瀏覽器是否支援剪貼簿 API
+            if (!navigator.clipboard || !navigator.clipboard.read) {
+                alert("⚠️ 你的瀏覽器可能不支援直接讀取剪貼簿，請嘗試更新系統！");
+                return;
+            }
+
+            // 2. 請求讀取剪貼簿的內容 (iOS 第一次按會跳出「允許貼上」的詢問)
+            const clipboardItems = await navigator.clipboard.read();
+            let imageBlob = null;
+
+            // 3. 在剪貼簿的多個項目中，找出是「圖片」的檔案
+            for (const item of clipboardItems) {
+                const imageTypes = item.types.filter(type => type.startsWith('image/'));
+                if (imageTypes.length > 0) {
+                    imageBlob = await item.getType(imageTypes[0]);
+                    break; // 找到圖片就停止尋找
+                }
+            }
+
+            // 4. 如果有找到圖片，就把它塞進原本的 input 裡
+            if (imageBlob) {
+                // 將圖片轉換成 File 物件
+                const file = new File([imageBlob], "pasted-image.png", { type: imageBlob.type });
+                
+                // 🎩 核心魔術：利用 DataTransfer 模擬使用者手動選擇了檔案
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                
+                // 觸發原本 input 的 'change' 事件，讓你的 OCR 程式以為你剛選好照片！
+                fileInput.dispatchEvent(new Event('change'));
+                
+            } else {
+                alert("⚠️ 剪貼簿裡沒有圖片唷！請先在遊戲截圖後選擇「拷貝並刪除」。");
+            }
+        } catch (error) {
+            console.error("讀取剪貼簿失敗：", error);
+            alert("⚠️ 無法讀取剪貼簿！可能是權限被拒絕，或是畫面沒有切換回 PWA。");
+        }
+    });
+});
